@@ -166,6 +166,6 @@
   </div>
 
   <div class="divider"></div>
-  <footer>© 2025 消防eラーニングサポート / 作成：Naoki</footer>
+  <footer>© 2026 消防eラーニングサポート / 作成：Naoki</footer>
 </div>
 
