@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ニパウイルス学習ポータル</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (for JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+        h1, h2, h3, .font-serif {
+            font-family: 'Noto Serif JP', serif;
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.5s ease-out;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Icons (SVG Components) ---
+        const BookOpen = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        );
+        const CheckCircle = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        );
+        const RefreshCw = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+        );
+        const Award = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+        );
+        const AlertCircle = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        );
+        const ChevronDown = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"/></svg>
+        );
+        const ChevronUp = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="18 15 12 9 6 15"/></svg>
+        );
+        const Stethoscope = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>
+        );
+
+        const NipahVirusApp = () => {
+            const [activeTab, setActiveTab] = useState('fqa');
+            
+            // --- Data Definitions ---
+            
+            const fqaData = [
+                { q: "ニパウイルスとはどのようなウイルスですか？", a: "パラミクソウイルス科ヘニパウイルス属に属するRNAウイルスです。1998年から1999年にかけてマレーシアで発生したブタとヒトの脳炎流行で初めて特定されました。" },
+                { q: "ニパウイルスの自然宿主（本来の保有動物）は何ですか？", a: "オオコウモリ科（Pteropodidae）、特にオオコウモリ属（Pteropus）のコウモリ（フルーツバット）です。これらのコウモリはウイルスに感染しても発症しない不顕性感染の状態にあり、尿や唾液などを通じてウイルスを排泄します。" },
+                { q: "ヘニパウイルス属には他にどのようなウイルスが含まれますか？", a: "オーストラリアでウマとヒトに致死的な感染を引き起こすヘンドラウイルス（Hendra virus）が含まれます。また、シーダーウイルス（Cedar virus）やガーナのコウモリから見つかったウイルスなども同属です。ニパウイルスとヘンドラウイルスは遺伝的に近く、共通の抗原性を持っています。" },
+                { q: "ニパウイルスの致死率はどの程度ですか？", a: "流行の地域や医療体制によって異なりますが、一般的に40%から75%と推定されています。バングラデシュやインドの一部の流行では90%〜100%近い致死率が報告されたこともあります。" },
+                { q: "なぜニパウイルスはバイオセーフティレベル4（BSL-4）に分類されるのですか？", a: "高い致死率を持ち、人から人への感染の可能性があり、かつ現在承認された特異的な治療法やワクチンが存在しないためです。取り扱いには最高レベルの封じ込め施設が必要です。" },
+                { q: "ウイルスは環境中でどのくらい生存しますか？", a: "比較的不安定ですが、条件によっては生存可能です。例えば、ナツメヤシの樹液中（22℃）では少なくとも7日間感染力を維持したというデータがあります。また、コウモリの尿中では半減期が約18時間とされています。" },
+                { q: "一般的な消毒剤は有効ですか？", a: "はい。ニパウイルスはエンベロープ（脂質の膜）を持つウイルスであるため、石鹸、洗剤、次亜塩素酸ナトリウム（塩素系漂白剤）などで不活化することができます。また、70℃で1時間、あるいは100℃で15分以上の加熱でも完全に不活化されます。" },
+                { q: "「カテゴリーC」のバイオテロ剤に分類されているのはなぜですか？", a: "米国CDCは、ニパウイルスを入手のしやすさ、生産・散布の容易さ、高い致死率、そして社会的なパニックを引き起こす可能性から、将来的に脅威となりうるカテゴリーCの病原体に分類しています。" },
+                { q: "ニパウイルスの遺伝子型（系統）にはどのような違いがありますか？", a: "主に「マレーシア株（NiV-M）」と「バングラデシュ株（NiV-B）」の2つのクレードに分かれます。マレーシア株は主に神経症状が顕著でしたが、バングラデシュ株は呼吸器症状を伴いやすく、ヒト-ヒト感染のリスクが高い傾向にあります。" },
+                { q: "コウモリ以外に感染する動物はいますか？", a: "はい。ブタ、ウマ、ヤギ、ヒツジ、イヌ、ネコなどが感染することが知られています。特にブタは「増幅動物」として重要で、マレーシアの流行ではブタからヒトへ感染が拡大しました。" },
+                { q: "主な感染経路にはどのようなものがありますか？", a: "①感染動物（コウモリ、ブタなど）との直接接触、②汚染された食品（ナツメヤシの樹液や果物）の摂取、③感染者（ヒト）との濃厚接触（飛沫や体液）の3つが主要な経路です。" },
+                { q: "マレーシアでの流行（1998-1999）の感染源は何でしたか？", a: "感染したブタとの濃厚接触が主な原因でした。コウモリが豚舎近くの果樹に集まり、その尿や食べ残しでブタが感染し、ブタの間で爆発的に感染が広がった後、養豚農家へ感染しました。" },
+                { q: "バングラデシュやインドでの流行の主な原因は何ですか？", a: "感染したオオコウモリの尿や唾液で汚染された「生のナツメヤシ樹液（Date Palm Sap）」の摂取が主な原因とされています。採取壺にコウモリが近づき、汚染することが確認されています。" },
+                { q: "ヒトからヒトへの感染はどのように起こりますか？", a: "主に感染者の呼吸器分泌物や体液（尿、血液など）との濃厚接触によって起こります。家族や介護者、医療従事者がリスクにさらされます。特に呼吸器症状がある患者や、死亡直前の重篤な患者からの感染リスクが高いとされています。" },
+                { q: "インドでの最近の発生状況はどうなっていますか？", a: "ケララ州では2018年以降、2019年、2021年、2023年、2024年、2025年と断続的に発生しています。また、2026年1月には西ベンガル州でも医療従事者の感染事例が報告されており、発生地域が限定的ではないことが示唆されています。" },
+                { q: "季節性はありますか？", a: "バングラデシュやインドの一部では、ナツメヤシ樹液の収穫時期（冬から春、12月〜5月頃）に発生が集中する傾向があります。これはコウモリの繁殖行動や樹液採取のタイミングと関連しています。" },
+                { q: "潜伏期間はどのくらいですか？", a: "通常は4日から14日ですが、最長で45日に及ぶ報告もあります。このため、接触者の健康観察期間は通常21日間（またはそれ以上）設定されることが多いです。" },
+                { q: "無症候性感染（症状が出ない感染）はありますか？", a: "はい。過去の調査では、感染者の8〜45%程度が無症候性であったという報告があります。ただし、無症候性感染者からの感染拡大リスクについては明確な証拠はまだ限られています。" },
+                { q: "日本国内での発生リスクはありますか？", a: "現時点では日本国内での発生報告はありません。しかし、輸入動物や渡航者を介した持ち込みのリスクはゼロではなく、ニパウイルスは感染症法で四類感染症に指定され監視対象となっています。" },
+                { q: "西ベンガル州での2026年の事例の特徴は何ですか？", a: "2名の看護師が感染しましたが、これらは同じ病院に勤務しており、ヒト-ヒト感染または共通の曝露源があった可能性が示唆されています。接触者追跡が行われましたが、大規模な拡大には至りませんでした。" },
+                { q: "初期症状はどのようなものですか？", a: "発熱、頭痛、筋肉痛（筋肉痛）、嘔吐、咽頭痛など、インフルエンザに似た症状で始まります。" },
+                { q: "重症化するとどのような症状が出ますか？", a: "めまい、眠気、意識障害、神経学的徴候など急性脳炎の症状が現れます。重症例ではけいれん発作を起こし、24〜48時間以内に昏睡状態に陥ることがあります。" },
+                { q: "呼吸器症状は必ず出ますか？", a: "必ずではありませんが、咳、呼吸困難、非定型肺炎などの呼吸器症状を伴うことがあります。特にバングラデシュ株の感染例や、重症例の約半数で呼吸器症状が見られると報告されています。" },
+                { q: "「遅発性脳炎」とは何ですか？", a: "急性期から回復した後、数ヶ月から数年（最長11年などの報告あり）経過してから脳炎を発症することです。ウイルスが中枢神経系に潜伏し、再活性化することで起こると考えられています。" },
+                { q: "「再発性脳炎」とは何ですか？", a: "急性脳炎から回復した患者が、後に再び脳炎症状を呈することです。回復者の数％に見られることがあり、予後不良となるケースもあります。" },
+                { q: "回復後の後遺症にはどのようなものがありますか？", a: "生存者の約20%に、持続的なけいれん、性格の変化、疲労、認知機能の低下などの神経学的後遺症が残ることが報告されています。" },
+                { q: "致死率に影響する要因は何ですか？", a: "ウイルスの株（バングラデシュ株の方が高い傾向）、脳幹機能障害の有無、高齢、基礎疾患、適切な集中治療（人工呼吸管理など）が受けられるかどうかが予後に影響します。" },
+                { q: "他の脳炎（日本脳炎など）とどう見分けますか？", a: "臨床症状だけでは区別が難しいため、渡航歴、動物接触歴（コウモリ、ブタ）、樹液摂取歴などの問診が重要です。確定診断には実験室での検査が必須です。" },
+                { q: "性的接触による感染の可能性はありますか？", a: "回復後の男性の精液からウイルスRNAが検出された事例があり、性感染の潜在的なリスクが示唆されていますが、実際に性感染が確認された事例は今のところ報告されていません。" },
+                { q: "妊婦が感染した場合のリスクは？", a: "非常に限られたデータしかありませんが、子宮内感染（垂直感染）の可能性を示す動物実験の結果や、流産のリスクがあることが示唆されています。" },
+                { q: "確定診断にはどのような検査が行われますか？", a: "急性期には、咽頭・鼻腔ぬぐい液、血液、尿、髄液を用いたRT-PCR法（遺伝子検査）が主な診断法です。回復期にはELISA法による抗体検査（IgM, IgG）が行われます。" },
+                { q: "検体採取のタイミングはいつが良いですか？", a: "発症初期に呼吸器検体や血液などを採取します。ウイルス排出は発症後数日から始まりますが、初期には検出されないこともあるため、疑わしい場合は繰り返し検査を行うことが推奨されます。" },
+                { q: "現場（救急隊）で簡易検査はできますか？", a: "いいえ。現在、ニパウイルスを現場で即座に判定できる迅速診断キット（インフルエンザのようなもの）は実用化されていません。専門の検査機関でのPCR検査が必要です。" },
+                { q: "検査のための検体はどのように取り扱うべきですか？", a: "ニパウイルスは感染性が高いため、検体はバイオハザードとして厳重に管理し、三重梱包など国際的な輸送基準に従って、指定された検査機関へ輸送する必要があります。" },
+                { q: "死亡後の診断は可能ですか？", a: "はい。解剖や死後生検によって得られた組織（脳、肺、腎臓など）を用いた免疫組織化学検査やPCR検査で診断が可能です。" },
+                { q: "血清学的検査（抗体検査）の有用性は何ですか？", a: "発症後しばらく経過してから（通常10〜14日以降）、または回復後の診断に有用です。また、疫学調査で過去の感染の有無を調べる際にも使われます。" },
+                { q: "MRI検査で特徴的な所見はありますか？", a: "脳炎患者のMRIでは、大脳皮質や皮質下白質に多発性の小さな高信号病変が見られることがあります。これは微小梗塞を反映していると考えられています。" },
+                { q: "日本で疑い例が出た場合、どこで検査しますか？", a: "保健所を通じて国立感染症研究所などの専門機関に検体を送付し、検査を行うことになります。ニパウイルス感染症は四類感染症であり、届出が必要です。" },
+                { q: "特効薬はありますか？", a: "2026年1月現在、ニパウイルス感染症に対して承認された特異的な抗ウイルス薬はありません。治療は対症療法（支持療法）が中心となります。" },
+                { q: "現在行われている主な治療内容は何ですか？", a: "安静、補液、解熱、けいれんの管理、呼吸不全に対する人工呼吸管理などの集中治療が行われます。" },
+                { q: "リバビリンは効果がありますか？", a: "マレーシアの流行時に使用され、死亡率を低下させたという報告がありますが、その有効性は科学的に明確には証明されていません。試験管内では効果がありますが、動物実験やヒトでの厳密な評価は定まっていません。" },
+                { q: "開発中の治療薬にはどのようなものがありますか？", a: "モノクローナル抗体「m102.4」が人道的見地から使用された実績があり、開発が進んでいます。また、エボラ出血熱治療薬であるレムデシビルも動物実験で効果が示され、期待されています。" },
+                { q: "ワクチンはありますか？", a: "ヒト用の承認されたワクチンはまだありません。しかし、オックスフォード大学が開発した「ChAdOx1 NipahB」などが臨床試験（第II相）に進んでおり、開発が加速しています。" },
+                { q: "動物用のワクチンはありますか？", a: "オーストラリアでは、ウマ用のヘンドラウイルスワクチンが実用化されており、これがニパウイルスに対しても交差防御効果を持つことが知られています。" },
+                { q: "接触後の予防投与（PEP）は可能ですか？", a: "確立された方法はありませんが、実験的なモノクローナル抗体（m102.4）が曝露後の予防として使用された事例があります。" },
+                { q: "救急隊員が着用すべき個人防護具（PPE）は何ですか？", a: "疑い患者に接する際は、標準予防策に加え、接触感染・飛沫感染予防策が必要です。具体的には、ガウン、手袋、目の保護具（ゴーグルまたはフェイスシールド）、N95マスク（またはそれ以上）の着用が推奨されます。" },
+                { q: "患者搬送時の注意点は？", a: "患者にはサージカルマスクを着用させ（可能であれば）、咳エチケットを励行させます。救急車内は換気を良くし、エアロゾルが発生する処置（気管挿管、吸引、ネブライザーなど）は極力避けるか、行う場合は厳重な空気感染予防策（N95以上、密閉）を講じます。" },
+                { q: "救急車の消毒には何を使えば良いですか？", a: "0.5%（5000ppm）の次亜塩素酸ナトリウム溶液などが有効です。血液や体液の付着がある場合は、適切な手順で清掃・消毒を行います。" },
+                { q: "患者の遺体の取り扱いはどうすべきですか？", a: "遺体からの感染リスクがあるため、遺体の洗浄やエンバーミング（防腐処置）は避け、体液が漏れないよう遺体袋に密閉し、取り扱いを最小限にする必要があります。葬儀の際も接触を避けることが重要です。" },
+                { q: "疑い患者が発生した場合の報告手順は？", a: "日本では感染症法に基づき、ニパウイルス感染症が疑われる場合は直ちに保健所へ通報する必要があります。医療機関への搬送調整も保健所の指示に従うことが一般的です。" }
+            ];
+
+            const quizData = [
+                { id: 1, question: "ニパウイルスはどの科に属するウイルスですか？", options: ["コロナウイルス科", "フィロウイルス科", "パラミクソウイルス科", "フラビウイルス科"], correct: "パラミクソウイルス科", explanation: "ニパウイルスはパラミクソウイルス科ヘニパウイルス属に分類されるRNAウイルスです。" },
+                { id: 2, question: "ニパウイルスの自然宿主（本来の持ち主）と考えられている動物はどれですか？", options: ["野生のアライグマ", "オオコウモリ（フルーツバット）", "野生のネズミ", "渡り鳥"], correct: "オオコウモリ（フルーツバット）", explanation: "ニパウイルスの自然宿主は、オオコウモリ科（特にオオコウモリ属 Pteropus）のコウモリです。" },
+                { id: 3, question: "ニパウイルスが最初に確認された国はどこですか？", options: ["インド", "バングラデシュ", "マレーシア", "フィリピン"], correct: "マレーシア", explanation: "1998年から1999年にかけて、マレーシアの養豚農家で発生した脳炎の流行で初めて特定されました。" },
+                { id: 4, question: "ニパウイルスの致死率（致命率）の推定範囲はどれくらいですか？", options: ["0.1%〜1%", "10%〜20%", "40%〜75%", "90%以上"], correct: "40%〜75%", explanation: "流行や医療体制によりますが、致死率は40%〜75%と推定されています。" },
+                { id: 5, question: "ニパウイルスは日本の感染症法において何類感染症に指定されていますか？", options: ["一類感染症", "二類感染症", "三類感染症", "四類感染症"], correct: "四類感染症", explanation: "日本の感染症法において、ニパウイルス感染症は四類感染症に指定されています。" },
+                { id: 6, question: "ニパウイルスを取り扱うために必要なバイオセーフティレベル（BSL）はいくつですか？", options: ["BSL-1", "BSL-2", "BSL-3", "BSL-4"], correct: "BSL-4", explanation: "ニパウイルスは致死率が高く、有効な治療法が確立されていないため、最高レベルの封じ込め施設であるBSL-4での取り扱いが必要です。" },
+                { id: 7, question: "ニパウイルスと同じ「ヘニパウイルス属」に含まれるウイルスはどれですか？", options: ["マールブルグウイルス", "ヘンドラウイルス", "ラッサウイルス", "エボラウイルス"], correct: "ヘンドラウイルス", explanation: "ニパウイルスはヘンドラウイルスとともに、パラミクソウイルス科ヘニパウイルス属を構成します。" },
+                { id: 8, question: "ニパウイルス粒子の構造的特徴として正しいものはどれですか？", options: ["エンベロープ（外膜）を持つ", "エンベロープを持たない", "DNAウイルスである", "細菌の一種である"], correct: "エンベロープ（外膜）を持つ", explanation: "ニパウイルスはエンベロープを持つ一本鎖マイナス鎖RNAウイルスです。" },
+                { id: 9, question: "ニパウイルスのヒトへの感染経路として「誤っている」ものはどれですか？", options: ["感染した動物（ブタなど）との直接接触", "汚染された食品（ナツメヤシの樹液など）の摂取", "蚊による媒介", "感染者（ヒト）との濃厚接触"], correct: "蚊による媒介", explanation: "ニパウイルスは動物（コウモリ、ブタ）や食品、ヒトからヒトへの接触で感染しますが、蚊が媒介するという証拠はありません。" },
+                { id: 10, question: "ニパウイルスはWHO（世界保健機関）の研究開発においてどのような位置づけにありますか？", options: ["優先度の低い疾病", "研究開発ブループリントの優先疾患", "根絶された疾患", "監視対象外の疾患"], correct: "研究開発ブループリントの優先疾患", explanation: "WHOはニパウイルスを、パンデミックの可能性があり対策が急務である「研究開発ブループリント」の優先疾患の一つに指定しています。" },
+                { id: 11, question: "1998-1999年のマレーシアでの流行において、主な感染源（中間宿主）となった家畜はどれですか？", options: ["ウマ", "ニワトリ", "ブタ", "ヤギ"], correct: "ブタ", explanation: "マレーシアの流行では、感染したブタとの濃厚接触が主な感染原因でした。" },
+                { id: 12, question: "バングラデシュやインドでの流行において、主な感染源とされている食品はどれですか？", options: ["生の豚肉", "生のナツメヤシの樹液", "魚介類", "輸入牛肉"], correct: "生のナツメヤシの樹液", explanation: "バングラデシュやインドでは、感染したオオコウモリの尿や唾液で汚染された生のナツメヤシの樹液（デーツパームサップ）の摂取が主な感染源となっています。" },
+                { id: 13, question: "2018年以降、ニパウイルスの発生が定期的に報告されているインドの州はどこですか？", options: ["ケララ州", "ラジャスタン州", "パンジャブ州", "グジャラート州"], correct: "ケララ州", explanation: "インドのケララ州では2018年に最初のアウトブレイクが発生し、その後2019年、2021年、2023年、2024年、2025年と発生が報告されています。" },
+                { id: 14, question: "2026年1月、新たにニパウイルス感染症の確定例が報告されたインドの州はどこですか？", options: ["西ベンガル州", "タミル・ナードゥ州", "マハーラーシュトラ州", "ウッタル・プラデーシュ州"], correct: "西ベンガル州", explanation: "2026年1月、西ベンガル州で2名の医療従事者の感染が確認されました。" },
+                { id: 15, question: "バングラデシュでのニパウイルス発生に季節性が見られるのはなぜですか？", options: ["雨季にウイルスが活性化するため", "冬季にナツメヤシの樹液採取が行われるため", "夏季にコウモリが繁殖するため", "乾季にブタの移動が増えるため"], correct: "冬季にナツメヤシの樹液採取が行われるため", explanation: "バングラデシュでは、ナツメヤシの樹液の収穫時期である12月から5月にかけて発生する傾向があります。" },
+                { id: 16, question: "2023年のバングラデシュでの流行における致死率は約何％でしたか？", options: ["10%", "30%", "50%", "73%"], correct: "73%", explanation: "2023年のバングラデシュでの流行では、11例中8名が死亡し、致死率は73%でした。" },
+                { id: 17, question: "フィリピンでの2014年のアウトブレイクで、ヒトへの感染源となった可能性が高い動物は？", options: ["ブタ", "ウマ", "イヌ", "ネコ"], correct: "ウマ", explanation: "フィリピンの2014年の流行では、病気のウマへの曝露やウマの肉の摂取が感染経路として報告されています。" },
+                { id: 18, question: "インドやバングラデシュの流行で確認されている、マレーシアの流行では顕著でなかった感染経路は？", options: ["蚊による媒介", "ヒトからヒトへの感染", "水系感染", "土壌感染"], correct: "ヒトからヒトへの感染", explanation: "インドやバングラデシュでは、患者の家族や介護者へのヒトからヒトへの感染が定期的に報告されていますが、マレーシア・シンガポールの流行では確認されませんでした。" },
+                { id: 19, question: "オオコウモリの生息域であり、ニパウイルスの抗体などが検出されているが、ヒトの発症が報告されていない地域は？", options: ["アフリカ（ガーナなど）", "南米", "北米", "ヨーロッパ"], correct: "アフリカ（ガーナなど）", explanation: "ガーナやマダガスカルなどのアフリカのコウモリからヘニパウイルスの抗体やRNAが検出されていますが、2018年時点でヒトの発症は報告されていません。" },
+                { id: 20, question: "2026年1月の西ベンガル州での事例において、感染した2名の職業は何でしたか？", options: ["農家", "樹液採取業者", "医療従事者（看護師）", "獣医師"], correct: "医療従事者（看護師）", explanation: "西ベンガル州の同じ病院に勤務する2名の看護師（医療従事者）の感染が確認されました。" },
+                { id: 21, question: "ニパウイルス感染症の潜伏期間は通常どのくらいですか？", options: ["12〜24時間", "4〜14日", "1〜2ヶ月", "半年〜1年"], correct: "4〜14日", explanation: "通常は4〜14日ですが、最長で45日という報告もあります。" },
+                { id: 22, question: "ニパウイルス感染症の初期症状として最も一般的なものはどれですか？", options: ["全身の発疹", "発熱、頭痛、筋肉痛", "急激な視力低下", "黄疸"], correct: "発熱、頭痛、筋肉痛", explanation: "初期症状はインフルエンザ様で、発熱、頭痛、筋肉痛、嘔吐、咽頭痛などが見られます。" },
+                { id: 23, question: "重症化した場合に現れる特徴的な症状はどれですか？", options: ["急性脳炎（意識障害、けいれん等）", "肝不全", "腎結石", "皮膚癌"], correct: "急性脳炎（意識障害、けいれん等）", explanation: "重症化すると脳炎（めまい、眠気、意識変容）を起こし、24〜48時間以内に昏睡状態に陥ることがあります。" },
+                { id: 24, question: "ニパウイルス感染症に見られることがある「遅発性」または「再発性」の症状とは何ですか？", options: ["数ヶ月〜数年後の脳炎の発症", "数年後の肝硬変", "数ヶ月後の脱毛", "数年後の関節変形"], correct: "数ヶ月〜数年後の脳炎の発症", explanation: "回復後、数ヶ月から数年経ってから脳炎が再発したり、遅発性脳炎を発症したりするケースが報告されています。" },
+                { id: 25, question: "ニパウイルス感染症の確定診断に用いられる主な検査方法はどれですか？", options: ["尿検査による糖の検出", "RT-PCR法によるウイルス遺伝子の検出", "超音波検査", "心電図検査"], correct: "RT-PCR法によるウイルス遺伝子の検出", explanation: "急性期には咽頭ぬぐい液、血液、尿、髄液からのRT-PCR法によるウイルスRNAの検出が主な診断法です。" },
+                { id: 26, question: "ニパウイルス感染症の回復者に残ることがある後遺症はどれですか？", options: ["持続的なけいれんや性格の変化", "失明", "聴力消失", "糖尿病"], correct: "持続的なけいれんや性格の変化", explanation: "回復者の約20%に、持続的なけいれん、疲労、性格変化などの神経学的後遺症が残ることがあります。" },
+                { id: 27, question: "バングラデシュ株（NiV-B）に感染した場合、マレーシア株と比較して発生しやすい症状は？", options: ["腎不全", "重篤な呼吸器症状", "皮膚炎", "結膜炎"], correct: "重篤な呼吸器症状", explanation: "バングラデシュ株は、マレーシア株に比べて重篤な呼吸器症状や非定型肺炎を引き起こす可能性が高いとされています。" },
+                { id: 28, question: "感染していても症状が出ないことを何と呼びますか？（ニパウイルスでも報告されています）", options: ["不顕性感染（無症候性感染）", "劇症感染", "持続感染", "潜伏感染"], correct: "不顕性感染（無症候性感染）", explanation: "ニパウイルス感染者のうち、一部（流行により8〜45%等と幅がある）は無症候性感染（不顕性感染）のままであることが報告されています。" },
+                { id: 29, question: "診断のために採取される検体として適切でないものはどれですか？", options: ["咽頭ぬぐい液", "血液", "髄液", "毛髪"], correct: "毛髪", explanation: "診断には咽頭・鼻腔ぬぐい液、髄液、尿、血液が使用されます。毛髪は通常用いられません。" },
+                { id: 30, question: "ニパウイルス感染症と症状が似ており、鑑別が必要な疾患はどれですか？", options: ["日本脳炎", "水虫", "虫垂炎", "痛風"], correct: "日本脳炎", explanation: "初期症状や脳炎症状が類似しているため、日本脳炎や細菌性髄膜炎などとの鑑別が重要です。" },
+                { id: 31, question: "消防職員（救急隊員）がニパウイルス疑い患者に接する際、推奨される個人防護具（PPE）はどれですか？", options: ["サージカルマスクのみ", "手袋のみ", "ガウン、手袋、目の保護具、N95マスク", "防塵マスクと軍手"], correct: "ガウン、手袋、目の保護具、N95マスク", explanation: "接触感染、飛沫感染、およびエアロゾル発生手技時の空気感染予防のため、ガウン、手袋、目の保護具、N95以上のマスクの着用が推奨されます。" },
+                { id: 32, question: "ニパウイルス感染症患者の搬送において、適切な感染予防策はどれですか？", options: ["標準予防策のみ", "標準予防策 + 接触予防策 + 飛沫予防策（状況により空気予防策）", "空気予防策のみ", "特に対策は不要"], correct: "標準予防策 + 接触予防策 + 飛沫予防策（状況により空気予防策）", explanation: "ヒト-ヒト感染のリスクがあるため、標準予防策に加え、接触および飛沫予防策（エアロゾル発生時は空気予防策）を講じる必要があります。" },
+                { id: 33, question: "ニパウイルスに有効とされる消毒剤はどれですか？", options: ["水のみ", "次亜塩素酸ナトリウム（塩素系漂白剤）", "消臭スプレー", "重曹"], correct: "次亜塩素酸ナトリウム（塩素系漂白剤）", explanation: "ニパウイルスはエンベロープを持つウイルスであり、石鹸、洗剤、次亜塩素酸ナトリウムなどで不活化できます。" },
+                { id: 34, question: "現場活動において、ニパウイルス感染症が疑われる患者が出た場合、最初に行うべきことは？", options: ["患者の家族全員を直ちに搬送する", "適切なPPEを着用し、感染拡大防止措置（隔離等）をとる", "ワクチンをその場で接種する", "素手で触れて体温を確認する"], correct: "適切なPPEを着用し、感染拡大防止措置（隔離等）をとる", explanation: "自身への感染と周囲への拡大を防ぐため、直ちに適切なPPEを着用し、患者を隔離するなどの措置が必要です。" },
+                { id: 35, question: "流行地域からの帰国者が発熱と頭痛を訴えている場合、聴取すべき重要な情報は？", options: ["好きな食べ物", "コウモリや病気の動物との接触歴、ナツメヤシ樹液の摂取歴", "運動習慣", "睡眠時間"], correct: "コウモリや病気の動物との接触歴、ナツメヤシ樹液の摂取歴", explanation: "流行地域への渡航歴に加え、コウモリやブタなどの動物との接触、ナツメヤシ樹液の摂取などは重要なリスク因子です。" },
+                { id: 36, question: "救急車内の清掃・消毒について正しい記述はどれですか？", options: ["水拭きだけで十分である", "消毒は不要である", "適切な消毒剤（次亜塩素酸ナトリウム等）を用いて清掃・消毒する", "窓を開けて換気するだけでよい"], correct: "適切な消毒剤（次亜塩素酸ナトリウム等）を用いて清掃・消毒する", explanation: "患者搬送後は、適切な消毒剤を使用して表面の清掃と消毒を行う必要があります。" },
+                { id: 37, question: "ニパウイルスは「カテゴリーC」のバイオテロ剤としてCDCに分類されていますが、その理由は？", options: ["毒性が弱いため", "すでに根絶されたため", "将来的に大量散布向けに操作される可能性があり、高い致死率を持つため", "ワクチンが普及しているため"], correct: "将来的に大量散布向けに操作される可能性があり、高い致死率を持つため", explanation: "入手のしやすさ、生産・散布の容易さ、高い致死率などから、将来的に脅威となりうるカテゴリーCの病原体に分類されています。" },
+                { id: 38, question: "医療機関でのエアロゾル発生手技（挿管など）を行う際、患者を収容すべき理想的な部屋は？", options: ["大部屋", "陰圧室（空気感染隔離室）", "待合室", "廊下"], correct: "陰圧室（空気感染隔離室）", explanation: "エアロゾルによる感染リスクを低減するため、陰圧室（AIIR）での処置が推奨されます。" },
+                { id: 39, question: "ニパウイルス感染症で亡くなった方の遺体の取り扱いについて、推奨される対応は？", options: ["通常通りエンバーミング（防腐処置）を行う", "遺体を洗浄し、多くの人と接触させる", "遺体袋に密閉し、取り扱いを最小限にする", "解剖を積極的に現場で行う"], correct: "遺体袋に密閉し、取り扱いを最小限にする", explanation: "遺体からの感染リスクがあるため、洗浄やエンバーミングは避け、遺体袋に密閉し、取り扱いを最小限に抑える必要があります。" },
+                { id: 40, question: "感染予防のための手指衛生について正しいものは？", options: ["水洗いのみでよい", "石鹸と水による手洗い、またはアルコール手指消毒を行う", "手洗いは1日1回でよい", "手袋をしていれば手洗いは不要"], correct: "石鹸と水による手洗い、またはアルコール手指消毒を行う", explanation: "患者のケアや訪問の後などには、石鹸と流水による手洗い、またはアルコール製剤による消毒を定期的に行うべきです。" },
+                { id: 41, question: "2026年1月現在、ニパウイルスに対して世界的に認可された特効薬やワクチンはありますか？", options: ["はい、認可されたワクチンがある", "はい、特効薬が薬局で買える", "いいえ、認可されたものはない（開発中）", "はい、インフルエンザワクチンが効く"], correct: "いいえ、認可されたものはない（開発中）", explanation: "2026年1月現在、ニパウイルス感染症に対して認可されたワクチンや特異的な治療薬はありません。" },
+                { id: 42, question: "現在行われている主な治療法はどのようなものですか？", options: ["抗生物質の投与", "支持療法（対症療法）", "外科手術", "ビタミン剤の投与"], correct: "支持療法（対症療法）", explanation: "特異的な治療法がないため、安静、水分補給、症状の管理（呼吸管理やけいれん対策）などの支持療法が中心となります。" },
+                { id: 43, question: "開発中の治療薬として、人道的使用（Compassionate use）の実績があるモノクローナル抗体はどれですか？", options: ["m102.4", "ペニシリン", "アスピリン", "インスリン"], correct: "m102.4", explanation: "モノクローナル抗体m102.4はフェーズ1臨床試験を完了し、人道的使用ベースで投与された実績があります。" },
+                { id: 44, question: "2025年12月に、世界初の第2相臨床試験が開始されたニパウイルスワクチン候補はどれですか？", options: ["ChAdOx1 NipahB", "BCGワクチン", "MMRワクチン", "ポリオワクチン"], correct: "ChAdOx1 NipahB", explanation: "オックスフォード大学が開発したChAdOx1 NipahBワクチンの第2相臨床試験がバングラデシュで開始されました。" },
+                { id: 45, question: "ニパウイルスの治療薬候補として、動物実験で曝露後予防効果が示唆されている抗ウイルス薬は？", options: ["レムデシビル", "オセルタミビル", "アシクロビル", "イベルメクチン"], correct: "レムデシビル", explanation: "レムデシビルは、アフリカミドリザルを用いた実験で、ニパウイルス曝露後の発症予防効果が示されています。" },
+                { id: 46, question: "2026年1月に西ベンガル州で発生した事例では、何名の接触者が追跡調査されましたか？", options: ["0名", "約10名", "196名", "1000名以上"], correct: "196名", explanation: "196名の接触者が特定・追跡され、全員が陰性・無症状であることが確認されました。" },
+                { id: 47, question: "ニパウイルスに対するワクチンの開発状況について正しい記述は？", options: ["開発は行われていない", "動物用のみ認可されている（ウマ用）", "すでにヒト用が世界中で接種されている", "全ての動物用ワクチンが禁止されている"], correct: "動物用のみ認可されている（ウマ用）", explanation: "ヒト用のワクチンは開発中ですが、オーストラリアではウマ用のヘンドラウイルスワクチン（ニパにも交差防御効果がある）が利用可能です。" },
+                { id: 48, question: "2023年に発表されたWHOの「東南アジア地域におけるニパウイルス予防管理戦略（2023-2030）」で重視されているアプローチは？", options: ["医療機関の閉鎖", "ワンヘルス（One Health）アプローチ", "コウモリの全駆除", "観光の禁止"], correct: "ワンヘルス（One Health）アプローチ", explanation: "ヒト、動物、環境の衛生を一体的に考える「ワンヘルス」アプローチを中心とした多部門連携が推奨されています。" },
+                { id: 49, question: "バングラデシュで実施されている、ナツメヤシ樹液による感染を防ぐための有効な対策は？", options: ["樹液を凍らせて飲む", "樹液を沸騰させてから飲む", "樹液を暗所に保存する", "樹液に砂糖を加える"], correct: "樹液を沸騰させてから飲む", explanation: "採取したばかりのナツメヤシ樹液を煮沸することでウイルスを不活化し、感染リスクを下げることができます。" },
+                { id: 50, question: "消防職員として、ニパウイルスのような新興感染症に対応するために日頃から重要なことは？", options: ["感染症には関わらないようにする", "最新の感染症情報の収集と標準予防策の徹底", "特効薬を個人輸入しておく", "現場活動を控える"], correct: "最新の感染症情報の収集と標準予防策の徹底", explanation: "未知の病原体や新興感染症から身を守るためには、日頃からの標準予防策の遵守と、発生状況などの最新情報の収集が不可欠です。" }
+            ];
+
+            // --- Quiz Logic State ---
+            const [currentQuestions, setCurrentQuestions] = useState([]);
+            const [userAnswers, setUserAnswers] = useState({});
+            const [showResult, setShowResult] = useState(false);
+            const [score, setScore] = useState(0);
+
+            // Initialize Quiz: Select 10 random questions
+            const initQuiz = () => {
+                const shuffled = [...quizData].sort(() => 0.5 - Math.random());
+                setCurrentQuestions(shuffled.slice(0, 10));
+                setUserAnswers({});
+                setShowResult(false);
+                setScore(0);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            // Start quiz on tab switch to 'quiz' if not already started
+            useEffect(() => {
+                if (activeTab === 'quiz' && currentQuestions.length === 0) {
+                    initQuiz();
+                }
+            }, [activeTab]);
+
+            const handleOptionSelect = (questionId, option) => {
+                if (showResult) return;
+                setUserAnswers(prev => ({
+                    ...prev,
+                    [questionId]: option
+                }));
+            };
+
+            const calculateScore = () => {
+                let newScore = 0;
+                currentQuestions.forEach(q => {
+                    const userAnswerText = userAnswers[q.id];
+                    if (userAnswerText === q.correct) {
+                        newScore++;
+                    }
+                });
+                setScore(newScore);
+                setShowResult(true);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            // --- Components ---
+            const FQAItem = ({ item, index }) => {
+                const [isOpen, setIsOpen] = useState(false);
+                return (
+                    <div className="mb-4 border border-slate-200 rounded-lg bg-white shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
+                        <button 
+                            onClick={() => setIsOpen(!isOpen)}
+                            className="w-full flex items-center justify-between p-5 text-left bg-white hover:bg-slate-50 transition-colors"
+                        >
+                            <div className="flex items-start gap-3">
+                                <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 text-amber-400 font-bold font-serif text-sm">
+                                    Q{index + 1}
+                                </span>
+                                <span className="font-medium text-slate-800 pt-1">{item.q}</span>
+                            </div>
+                            {isOpen ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
+                        </button>
+                        {isOpen && (
+                            <div className="p-5 pt-0 bg-slate-50 border-t border-slate-100">
+                                <div className="flex items-start gap-3 mt-4">
+                                    <span className="flex-shrink-0 font-bold text-emerald-600 mt-1">A.</span>
+                                    <p className="text-slate-700 leading-relaxed">{item.a}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
+                    {/* Header */}
+                    <header className="bg-slate-900 text-white shadow-lg sticky top-0 z-50 border-b-4 border-amber-500">
+                        <div className="max-w-4xl mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-500 rounded-lg text-slate-900">
+                                    <Stethoscope size={28} />
+                                </div>
+                                <div>
+                                    <h1 className="text-2xl md:text-3xl font-serif font-bold tracking-wide text-white">Nipah Virus Portal</h1>
+                                    <p className="text-slate-300 text-sm font-light">消防職員・救急隊員向け 感染症対策学習資料</p>
+                                </div>
+                            </div>
+                            <nav className="flex bg-slate-800 rounded-full p-1 shadow-inner">
+                                <button
+                                    onClick={() => setActiveTab('fqa')}
+                                    className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 ${
+                                        activeTab === 'fqa' 
+                                            ? 'bg-amber-500 text-slate-900 shadow-lg' 
+                                            : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                                    }`}
+                                >
+                                    <BookOpen size={16} />
+                                    知識を学ぶ (FQA)
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('quiz')}
+                                    className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 ${
+                                        activeTab === 'quiz' 
+                                            ? 'bg-amber-500 text-slate-900 shadow-lg' 
+                                            : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                                    }`}
+                                >
+                                    <CheckCircle size={16} />
+                                    理解度確認 (Test)
+                                </button>
+                            </nav>
+                        </div>
+                    </header>
+
+                    <main className="max-w-4xl mx-auto px-4 py-10">
+                        {/* FQA SECTION */}
+                        {activeTab === 'fqa' && (
+                            <div className="animate-fade-in-up">
+                                <div className="mb-8 text-center">
+                                    <h2 className="text-3xl font-serif font-bold text-slate-800 mb-3">よくある質問と回答</h2>
+                                    <p className="text-slate-600">
+                                        ニパウイルス感染症に関する基礎知識から現場活動での注意点まで。<br/>
+                                        まずはここで知識を深め、その後e-Learningで実力を試してください。
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {fqaData.map((item, index) => (
+                                        <FQAItem key={index} item={item} index={index} />
+                                    ))}
+                                </div>
+
+                                <div className="mt-12 text-center">
+                                    <p className="text-slate-600 mb-4">一通り学習しましたか？</p>
+                                    <button 
+                                        onClick={() => {
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            setActiveTab('quiz');
+                                        }}
+                                        className="bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 px-8 rounded-lg shadow-lg transform transition hover:-translate-y-1 flex items-center justify-center gap-2 mx-auto"
+                                    >
+                                        <CheckCircle size={20} className="text-amber-500" />
+                                        e-Learningへ進む
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* QUIZ SECTION */}
+                        {activeTab === 'quiz' && (
+                            <div className="animate-fade-in-up">
+                                {/* Quiz Header / Score Display */}
+                                {showResult ? (
+                                    <div className="mb-10 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+                                        <div className={`p-8 text-center ${score >= 8 ? 'bg-emerald-50' : 'bg-slate-50'}`}>
+                                            <p className="text-slate-500 font-serif uppercase tracking-widest text-sm mb-2">Result</p>
+                                            <div className="flex items-center justify-center gap-2 mb-4">
+                                                {score >= 8 ? <Award className="text-amber-500 w-12 h-12" /> : <AlertCircle className="text-slate-400 w-12 h-12" />}
+                                                <span className="text-5xl font-bold text-slate-900">{score}</span>
+                                                <span className="text-2xl text-slate-400 font-light">/ 10</span>
+                                            </div>
+                                            <p className="text-lg font-medium text-slate-700">
+                                                {score === 10 ? "素晴らしい！完璧な理解度です。" :
+                                                score >= 8 ? "合格ラインです。現場でも活かせる知識です。" :
+                                                "もう少し復習が必要です。FQAを見直してみましょう。"}
+                                            </p>
+                                            <button 
+                                                onClick={initQuiz}
+                                                className="mt-6 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-8 rounded-full shadow-md transition-colors flex items-center justify-center gap-2 mx-auto"
+                                            >
+                                                <RefreshCw size={18} />
+                                                再度挑戦する（別の問題）
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mb-8 text-center">
+                                        <h2 className="text-3xl font-serif font-bold text-slate-800 mb-2">確認テスト</h2>
+                                        <p className="text-slate-600">全50問のデータベースからランダムに10問出題されます。</p>
+                                    </div>
+                                )}
+
+                                {/* Questions List */}
+                                <div className="space-y-8">
+                                    {currentQuestions.map((q, index) => {
+                                        const isCorrect = userAnswers[q.id] === q.correct;
+                                        const showFeedback = showResult;
+
+                                        return (
+                                            <div key={q.id} className={`bg-white rounded-xl shadow-sm border p-6 md:p-8 transition-all ${
+                                                showFeedback 
+                                                    ? isCorrect 
+                                                        ? 'border-emerald-200 bg-emerald-50/30' 
+                                                        : 'border-rose-200 bg-rose-50/30'
+                                                    : 'border-slate-200 hover:shadow-md'
+                                            }`}>
+                                                {/* Question Header */}
+                                                <div className="flex gap-4 mb-6">
+                                                    <span className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 text-slate-600 font-bold font-serif shadow-inner">
+                                                        {index + 1}
+                                                    </span>
+                                                    <div className="flex-1">
+                                                        <h3 className="text-lg font-bold text-slate-800 leading-snug">{q.question}</h3>
+                                                        
+                                                        {/* Result Badge */}
+                                                        {showFeedback && (
+                                                            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold mt-3 ${
+                                                                isCorrect ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                                                            }`}>
+                                                                {isCorrect ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                                                                {isCorrect ? '正解' : '不正解'}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Options */}
+                                                <div className="grid grid-cols-1 gap-3 ml-0 md:ml-14">
+                                                    {q.options.map((option, opIndex) => {
+                                                        const isSelected = userAnswers[q.id] === option;
+                                                        const isThisCorrect = option === q.correct;
+                                                        
+                                                        let buttonStyle = "border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700";
+                                                        
+                                                        if (showResult) {
+                                                            if (isThisCorrect) {
+                                                                buttonStyle = "bg-emerald-600 border-emerald-600 text-white shadow-md ring-2 ring-emerald-100";
+                                                            } else if (isSelected && !isThisCorrect) {
+                                                                buttonStyle = "bg-rose-100 border-rose-200 text-rose-800 opacity-70";
+                                                            } else {
+                                                                buttonStyle = "bg-slate-50 border-slate-100 text-slate-400";
+                                                            }
+                                                        } else {
+                                                            if (isSelected) {
+                                                                buttonStyle = "bg-slate-800 border-slate-800 text-white shadow-md";
+                                                            }
+                                                        }
+
+                                                        return (
+                                                            <button
+                                                                key={opIndex}
+                                                                onClick={() => handleOptionSelect(q.id, option)}
+                                                                disabled={showResult}
+                                                                className={`text-left px-5 py-4 rounded-lg border-2 transition-all duration-200 flex items-center gap-3 ${buttonStyle}`}
+                                                            >
+                                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                                                    showResult && isThisCorrect ? 'border-white' : 
+                                                                    isSelected ? 'border-amber-400' : 'border-slate-300'
+                                                                }`}>
+                                                                    {isSelected && <div className={`w-2.5 h-2.5 rounded-full ${showResult && isThisCorrect ? 'bg-white' : 'bg-amber-400'}`} />}
+                                                                </div>
+                                                                <span className="font-medium">{option}</span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                {/* Explanation Section */}
+                                                {showResult && (
+                                                    <div className="mt-6 ml-0 md:ml-14 p-5 bg-slate-50 rounded-lg border border-slate-200 text-sm md:text-base animate-fade-in">
+                                                        <p className="font-bold text-slate-700 mb-2 flex items-center gap-2">
+                                                            <BookOpen size={16} className="text-amber-500" />
+                                                            解説
+                                                        </p>
+                                                        <p className="text-slate-600 leading-relaxed">
+                                                            <span className="font-bold text-slate-800 block mb-1">正解: {q.correct}</span>
+                                                            {q.explanation}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Action Button */}
+                                <div className="mt-12 mb-20 text-center">
+                                    {!showResult ? (
+                                        <button
+                                            onClick={calculateScore}
+                                            disabled={Object.keys(userAnswers).length < 10}
+                                            className={`py-4 px-12 rounded-lg font-bold text-lg shadow-xl transition-all transform hover:-translate-y-1 ${
+                                                Object.keys(userAnswers).length < 10
+                                                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                                                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                            }`}
+                                        >
+                                            {Object.keys(userAnswers).length < 10 
+                                                ? `残り ${10 - Object.keys(userAnswers).length} 問` 
+                                                : '結果を採点する'}
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            onClick={initQuiz}
+                                            className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 px-12 rounded-lg shadow-xl transform transition hover:-translate-y-1 inline-flex items-center gap-2"
+                                        >
+                                            <RefreshCw size={20} />
+                                            再度挑戦する
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Footer */}
+                    <footer className="bg-slate-900 text-slate-400 py-8 text-center border-t border-slate-800">
+                        <p className="text-sm">Nipah Virus Education & Training Portal</p>
+                        <p className="text-xs mt-2 text-slate-600">※本資料は学習目的で作成されています。最新の医療ガイドラインに従って行動してください。</p>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<NipahVirusApp />);
+    </script>
+</body>
+</html>
