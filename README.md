@@ -105,7 +105,7 @@
     </div>
     <div class="card">
       <div class="lesson-title">Lesson 4</div>
-      <div class="lesson-desc">車両運用と安全走行</div>
+      <div class="lesson-desc">林野火災時の空中消火</div>
       <a href="lesson4/index.html" class="button">▶ 学習する</a>
     </div>
     <div class="card">
