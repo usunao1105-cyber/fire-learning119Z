@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大阪市ビル火災教訓・学習アプリ</title>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel (JSX変換用) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* カスタムスクロールバーなどの微調整 */
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // --- アイコンコンポーネント (Lucide ReactのSVGを再現) ---
+        const IconBase = ({ children, className }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={className}
+            >
+                {children}
+            </svg>
+        );
+
+        const Info = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></IconBase>;
+        const Flame = (props) => <IconBase {...props}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.1.2-2.2.6-3.3.037.118.087.234.148.349Z"/></IconBase>;
+        const Wind = (props) => <IconBase {...props}><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></IconBase>;
+        const AlertTriangle = (props) => <IconBase {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></IconBase>;
+        const Activity = (props) => <IconBase {...props}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></IconBase>;
+        const Shield = (props) => <IconBase {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></IconBase>;
+        const BookOpen = (props) => <IconBase {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></IconBase>;
+        const FileText = (props) => <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></IconBase>;
+        const ChevronDown = (props) => <IconBase {...props}><path d="m6 9 6 6 6-6"/></IconBase>;
+        const Menu = (props) => <IconBase {...props}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></IconBase>;
+        const X = (props) => <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>;
+
+        // --- データ定義 ---
+        const faqData = [
+            {
+                id: 1,
+                title: "第1章：事故・火災の概要",
+                icon: <Info className="w-5 h-5" />,
+                questions: [
+                    { q: "本件火災事故の概要を教えてください。", a: "令和7年8月18日、大阪市中央区宗右衛門町の雑居ビルで発生した火災です。消防活動中に急激な燃焼現象（バックドラフト）が発生し、逃げ遅れた消防職員2名（小隊長と隊員）が殉職し、消防職員4名と民間人1名が負傷しました。" },
+                    { q: "火災の発生場所と建物の特徴は？", a: "現場は「田舎そばビル（東側建物）」と「イナカ会館（西側建物）」で、これらは4階部分で接続された複合用途ビル（飲食店・事務所）です。特定一階段等防火対象物に該当し、耐火構造の地下1階地上7階建てでした。" },
+                    { q: "出火箇所と延焼経路はどうなっていますか？", a: "西側建物の敷地内南西部の地上付近が出火箇所です。そこから外壁の屋外看板や室外機を伝って急速に垂直方向に延焼し、東側建物の屋外看板にも燃え移りました。その後、東側建物5階の窓枠やエアコンを焼損させて室内に侵入し、室内階段を通じて6階へ延焼しました。" },
+                    { q: "人的被害の詳細は？", a: "死者は2名（55歳の消防司令の小隊長、22歳の消防士の隊員2）で、死因はいずれも酸素欠乏による窒息です。負傷者は5名で、うち1名は自力脱出した隊員1、3名は救助活動等にあたった他隊の職員、1名は近隣店舗の利用客です。" },
+                    { q: "当時の気象状況は？", a: "天候は晴れ、気温32.1℃、湿度61％、南西の風1.5mで、乾燥注意報は出ていませんでしたが、暑さ指数（WBGT）は30.4と厳しい暑さでした。" }
+                ]
+            },
+            {
+                id: 2,
+                title: "第2章：屋外看板と延焼メカニズム",
+                icon: <Flame className="w-5 h-5" />,
+                questions: [
+                    { q: "なぜこれほど急速に上階へ延焼したのですか？", a: "外壁に設置された「屋外看板」と建物の間に「間隙」があり、そこが火の通り道（煙突効果）となったことや、看板自体が燃えやすい素材であったこと、さらに多数設置されていた室外機が燃焼を助長し、火炎が壁面を這うように垂直方向に伸展したためです。" },
+                    { q: "屋外看板は法令に適合していましたか？", a: "適合していませんでした。高さ3mを超える看板は不燃材料で造る必要がありますが、実際にはアルミ複合板（難燃材料）やインクジェットシート、木製工作物などが使用されていました。また、一部は許可申請も出されていませんでした。" },
+                    { q: "燃焼実験で分かったことは何ですか？", a: "不燃材料ではない看板や木製工作物は、不燃材料に比べて火炎が高く上がり、燃焼時間が長くなることが確認されました。また、看板が燃焼物を囲う形状の場合、さらに延焼が助長されることや、室外機内部の潤滑油への引火が火炎拡大に寄与することが示されました。" },
+                    { q: "屋外看板とバックドラフトの因果関係は？", a: "直接的な因果関係はありません。しかし、屋外看板を伝った火災が想定外の経路（東側建物5階の窓）から室内に侵入し、そこで燻り燃焼状態を作り出したことが、後のバックドラフト発生のきっかけとなりました。" },
+                    { q: "今後、屋外看板に対してどのような対策が取られますか？", a: "設置者への啓発強化、建築確認と屋外広告物許可事務の連携強化、繁華街における実態調査と是正指導が行われます。" }
+                ]
+            },
+            {
+                id: 3,
+                title: "第3章：活動経過とバックドラフト",
+                icon: <Wind className="w-5 h-5" />,
+                questions: [
+                    { q: "殉職した隊（恵美須ST隊）はどのようなルートで進入しましたか？", a: "建物の北側から進入し、直通階段を使って5階へ上がり、そこから室内階段を使って6階の南側ベランダ付近へ消火活動に向かいました。" },
+                    { q: "「急激な燃焼現象」はいつ、なぜ発生しましたか？", a: "10時13分に発生しました。東側建物5階の事務室Aが燃焼して酸素不足（燻り燃焼）になっていたところへ、検索活動中の別隊（浪速R隊）が扉を開放したことで新鮮な空気が流入し、バックドラフトが発生しました。" },
+                    { q: "バックドラフト発生時の5階の状況は？", a: "扉を開放する直前まで、廊下などの共用部分には煙が薄く、熱気もほとんど感じられない状況でした。そのため、活動隊は空気呼吸器の面体を着装せずに活動可能なレベルと判断していました。" },
+                    { q: "5階で起きたバックドラフトがなぜ6階の隊員に影響したのですか？", a: "5階と6階をつなぐ「室内階段」が煙突のような役割を果たし、5階で発生した火炎、黒煙、熱気が一気に6階へ流入したためです。" },
+                    { q: "バックドラフト直後の6階の環境はどうなりましたか？", a: "シミュレーションによると、発生からわずか数十秒で室温が数百度に達し、酸素濃度は数％まで低下、視界はほぼゼロ（見通し距離0.5m以下）になるという、生存不可能な濃煙熱気環境に瞬時に変化しました。" },
+                    { q: "生存した隊員1はどのように脱出しましたか？", a: "隊員1は異変を感じてすぐに室内階段へ向かい、視界不良の中を走り抜け、偶然ぶつかった鉄扉から廊下へ脱出しました。その後、直通階段で7階へ上がり、窓からベランダへ退避して緊急信号を発信しました。" }
+                ]
+            },
+            {
+                id: 4,
+                title: "第4章：殉職事故の状況と原因分析",
+                icon: <AlertTriangle className="w-5 h-5" />,
+                questions: [
+                    { q: "なぜ2名は脱出できなかったのですか？", a: "想定していた退路（室内階段）が火炎と熱気で遮断されたこと、瞬時の視界不良で方向感覚を失ったこと（パニック）、及び高熱による身体的ダメージで行動不能に陥ったためと考えられます。" },
+                    { q: "隊員たちは自分たちが危険な状況にあると認識していましたか？", a: "認識できていなかった可能性が高いです。北側から進入したため南側の激しい延焼を見ておらず、また5階室内への延焼情報も共有されていなかったため、「屋内進入」というよりは「通過」する認識で、危機感が希薄だったと分析されています。" },
+                    { q: "熱中症の影響はありましたか？", a: "冷却ベストを着用していませんでしたが、搬送先の医療機関の見解では、心停止前に熱中症になっていた可能性は低く、熱中症が直接の行動不能の原因とは考えにくいとされています。" },
+                    { q: "ホースを伝って戻ることはできなかったのですか？", a: "ホースは延びきった状態で余裕がなく、熱気を避けるために移動することが困難でした。また、隊員2はノズル（筒先）を持っていたものの、濃煙の中でホースラインを見失ったか、熱気により退路を絶たれた可能性があります。" },
+                    { q: "2名の発見時の状況は？", a: "12時10分と11分に、東側建物6階の居室Aで倒れているところを発見されました。2名とも空気呼吸器の面体を着装したままでした。" },
+                    { q: "直接の死因は何ですか？", a: "酸素欠乏による窒息です。火災による酸素消費と濃煙の吸入が原因とみられます。" }
+                ]
+            },
+            {
+                id: 5,
+                title: "第5章：装備品の分析と科学的検証",
+                icon: <Activity className="w-5 h-5" />,
+                questions: [
+                    { q: "防火衣の損傷状況はどうでしたか？", a: "著しい炭化や焦げは見られず、変色や煤けが主でした。これは、瞬間的な火炎放射（フラッシュオーバー等）を受けたというより、高温環境下（200～300℃以上）に長時間さらされたことを示唆しています。" },
+                    { q: "ヘルメットや面体の損傷から何が分かりますか？", a: "ヘルメット内部の衝撃吸収ライナーの収縮（110℃以上で発生）や、面体のアイピースの気泡・溶融（280～320℃で発生）が確認されました。これにより、彼らが倒れていた場所周辺が長時間高温であったことが裏付けられました。" },
+                    { q: "携帯警報器（PASS）は作動しましたか？", a: "作動しませんでした。小隊長は携行しておらず、隊員2は電源OFFの状態でした（隊員1も同様）。また、現場で起動させた形跡もありませんでした。" },
+                    { q: "無線機の緊急信号は使われましたか？", a: "脱出した隊員1は発信しましたが、小隊長と隊員2は発信していません。隊員2の無線機は熱で溶融しており、緊急信号の設定自体がされていませんでした。" },
+                    { q: "照明器具は使っていましたか？", a: "携行していたライトのスイッチはOFFのままでした。また、強力な充電式ライトは携行していませんでした。視界不良の中、ライトを活用できていなかったことが退避を困難にした一因とされています。" },
+                    { q: "空気呼吸器の残圧はありましたか？", a: "小隊長は3MPa残っていましたが、隊員2は0MPaでした。" }
+                ]
+            },
+            {
+                id: 6,
+                title: "第6章：指揮・情報共有・救出活動",
+                icon: <Shield className="w-5 h-5" />,
+                questions: [
+                    { q: "指揮本部は隊員たちの位置を把握していましたか？", a: "正確には把握できていませんでした。隊員1からの「5階」という脱出直後の情報や、ホースが5階へ延びていることから、「取り残された2名は5階にいる」という思い込み（バイアス）が生じ、6階の検索が後手に回りました。" },
+                    { q: "救出活動が難航した理由は？", a: "建物の構造が複雑で把握しづらかったこと、室内が濃煙熱気で充満しており進入が困難だったこと、そして情報の錯綜により、救出ポイントの特定に時間を要したためです。" },
+                    { q: "「緊急信号」を受信した後の対応は適切でしたか？", a: "十分ではありませんでした。緊急信号受信後の全隊への周知や活動方針の変更が徹底されず、中隊間で無線チャンネルが異なっていたこともあり、情報共有がスムーズに行われませんでした。" },
+                    { q: "ドローンや高所カメラは活用されましたか？", a: "活用されていましたが、東側建物5階室内への延焼や、南側の詳細な状況までは十分に把握・共有されていませんでした。" },
+                    { q: "現場での「安全管理」に問題はありましたか？", a: "ありました。屋内進入時の報告が徹底されておらず、指揮本部が隊員の詳細な位置を把握できていませんでした。また、危険予知情報（南側の延焼状況など）が活動隊に伝わっていませんでした。" },
+                    { q: "他の隊との連携はどうでしたか？", a: "現場到着時や活動中に接触はありましたが、建物の構造（5階と6階が室内階段でつながっていることなど）や危険性に関する情報の共有が不十分でした。" }
+                ]
+            },
+            {
+                id: 7,
+                title: "第7章：再発防止策・今後の対応",
+                icon: <BookOpen className="w-5 h-5" />,
+                questions: [
+                    { q: "消防活動における「リスク認識」はどう強化されますか？", a: "ドローンや高所カメラ、熱画像直視装置などを活用した情報収集能力を強化し、現場の危険な兆候（濃煙、熱気など）を早期に察知する体制を作ります。" },
+                    { q: "安全管理体制はどう変わりますか？", a: "「安全管理専従部隊」を創設し、隊員の安全を客観的に監視する体制を強化します。また、現場指揮本部と各隊の情報共有を密にするためのツール活用や無線運用の見直しを行います。" },
+                    { q: "訓練内容はどのように見直されますか？", a: "特殊な延焼や濃煙熱気環境を想定した実践的な訓練（VR訓練や実火災訓練装置の導入など）を実施し、隊員の危機管理能力（危険予知、緊急退避など）を向上させます。" },
+                    { q: "資器材の改善はありますか？", a: "熱画像直視装置の拡充、ドローンの機能強化、反射式（蓄光）ホースの導入などが検討されています。また、携帯警報器の携行・作動の徹底も指導されています。" },
+                    { q: "国（消防庁）の対応は？", a: "全国の消防本部に対し、安全管理マニュアルの再徹底を通知しました。また、今回の事故調査報告書を踏まえてマニュアルの改正等を検討するとしています。" },
+                    { q: "特定一階段等防火対象物への対策は？", a: "避難訓練だけでなく、初期消火訓練の指導を強化します。また、法令点検が未実施の建物に対して点検・報告を強く促進します。" }
+                ]
+            },
+            {
+                id: 8,
+                title: "第8章：その他（用語・法令等）",
+                icon: <FileText className="w-5 h-5" />,
+                questions: [
+                    { q: "「特定一階段等防火対象物」とは何ですか？", a: "地下または3階以上に不特定多数が利用する施設（飲食店など）があり、屋内階段が一つしかない建物のことです。火災時に避難が困難になりやすい特徴があります。" },
+                    { q: "「バックドラフト」とは具体的にどのような現象ですか？", a: "密閉された室内で火災が起き、酸素不足で燻っている状態の時に、ドア開放などで急に酸素が供給されると、溜まっていた可燃性ガスが爆発的に燃焼・噴出する現象です。" },
+                    { q: "「煙突効果」とは？", a: "建物の間隙や階段などが煙突のような役割を果たし、上昇気流によって火炎や煙が急速に上階へ広がる現象です。今回の火災では、看板裏の間隙や室内階段で発生しました。" },
+                    { q: "消防職員の装備基準は？", a: "防火衣、ヘルメット、手袋、編上長靴などが基本装備です。状況に応じて空気呼吸器、冷却ベスト、携帯警報器などを装備します。" },
+                    { q: "400MHz無線機とは？", a: "現場での隊員間・隊間の連絡に使われるアナログ無線機です。緊急信号発信機能を備えています。" },
+                    { q: "暑さ指数（WBGT）による活動制限はありましたか？", a: "大阪市消防局の規定では、暑さ指数が「注意（21）」以上の場合、冷却ベストの着用が義務付けられていますが、今回は着用されていませんでした。" },
+                    { q: "大阪市屋外広告物条例とは？", a: "景観保持や公衆への危害防止を目的とした条例で、一定サイズ以上の看板設置には許可が必要です。今回のビルの一部の看板は許可を得ていませんでした。" },
+                    { q: "建築基準法第64条とは？", a: "防火地域にある高さ3mを超える看板は、不燃材料で造るか覆わなければならないという規定です。今回の看板はこれに違反していました。" },
+                    { q: "この事故調査委員会の構成は？", a: "消防局長を委員長とし、局内の各部長で構成されています。また、外部有識者会議（大学教授、弁護士、医師など）の意見も反映されています。 " },
+                    { q: "最終報告書はいつ出ますか？", a: "令和8年1月を目途に最終報告書が取りまとめられる予定です。" }
+                ]
+            }
+        ];
+
+        // アコーディオンコンポーネント
+        function AccordionItem({ question, answer, index }) {
+            const [isOpen, setIsOpen] = useState(false);
+
+            return (
+                <div className={`border rounded-lg transition-all duration-200 ${isOpen ? 'bg-white shadow-md border-slate-300' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                    <button
+                        onClick={() => setIsOpen(!isOpen)}
+                        className="w-full text-left px-6 py-5 flex justify-between items-start group focus:outline-none focus:ring-2 focus:ring-slate-200 focus:ring-opacity-50 rounded-lg"
+                    >
+                        <div className="flex gap-4">
+                            <span className={`font-bold text-sm mt-0.5 ${isOpen ? 'text-orange-700' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                                Q{index}.
+                            </span>
+                            <span className={`font-medium text-base leading-relaxed ${isOpen ? 'text-slate-900' : 'text-slate-700'}`}>
+                                {question}
+                            </span>
+                        </div>
+                        <span className={`ml-4 mt-1 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+                            <ChevronDown className="w-5 h-5" />
+                        </span>
+                    </button>
+                    
+                    <div 
+                        className={`overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
+                    >
+                        <div className="px-6 pb-6 pl-14 pr-8">
+                            <div className="pt-4 border-t border-slate-100">
+                                <div className="flex gap-2">
+                                    <span className="font-bold text-slate-500 text-sm mt-0.5">A.</span>
+                                    <p className="text-slate-600 leading-relaxed text-sm md:text-base">
+                                        {answer}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // メインアプリケーション
+        function App() {
+            const [activeTab, setActiveTab] = useState(0);
+            const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+            const activeCategory = faqData[activeTab];
+
+            const handleTabChange = (index) => {
+                setActiveTab(index);
+                setIsSidebarOpen(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col md:flex-row">
+                    
+                    {/* モバイル用ヘッダー */}
+                    <div className="md:hidden bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-50 shadow-md">
+                        <h1 className="text-lg font-bold flex items-center">
+                            <span className="mr-2 text-orange-500"><Shield className="w-5 h-5" /></span>
+                            事故調査・教訓集
+                        </h1>
+                        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2">
+                            {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                        </button>
+                    </div>
+
+                    {/* サイドバー（PC） / オーバーレイメニュー（モバイル） */}
+                    <aside 
+                        className={`
+                            fixed md:sticky md:top-0 h-screen w-full md:w-72 bg-slate-900 text-slate-300 z-40 transition-transform duration-300 ease-in-out
+                            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+                            flex flex-col
+                        `}
+                    >
+                        <div className="p-6 border-b border-slate-700 hidden md:block">
+                            <h1 className="text-xl font-bold text-white mb-1 flex items-center">
+                                <span className="mr-2 text-orange-500"><Shield className="w-6 h-6" /></span>
+                                事故調査・教訓集
+                            </h1>
+                            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                                大阪市中央区雑居ビル火災<br/>
+                                事故調査報告書に基づくFAQ
+                            </p>
+                        </div>
+
+                        <div className="p-4 bg-slate-800/50 md:hidden">
+                            <p className="text-sm text-slate-400">章を選択してください</p>
+                        </div>
+
+                        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+                            {faqData.map((category, index) => (
+                                <button
+                                    key={category.id}
+                                    onClick={() => handleTabChange(index)}
+                                    className={`
+                                        w-full text-left px-4 py-3 rounded-lg flex items-center transition-colors duration-200
+                                        ${activeTab === index 
+                                            ? 'bg-orange-700 text-white shadow-lg' 
+                                            : 'hover:bg-slate-800 text-slate-400 hover:text-white'}
+                                    `}
+                                >
+                                    <span className="mr-3 opacity-80">{category.icon}</span>
+                                    <span className="text-sm font-medium">{category.title}</span>
+                                </button>
+                            ))}
+                        </nav>
+
+                        <div className="p-6 border-t border-slate-700 text-xs text-slate-500">
+                            <p>安全管理の徹底と<br/>再発防止のために</p>
+                        </div>
+                    </aside>
+
+                    {/* メインコンテンツ */}
+                    <main className="flex-1 p-4 md:p-10 max-w-4xl mx-auto w-full">
+                        {/* 前書き・イントロダクション */}
+                        {activeTab === 0 && (
+                            <div className="mb-8 p-6 bg-white border-l-4 border-slate-600 rounded-r-lg shadow-sm">
+                                <h2 className="text-lg font-bold text-slate-900 mb-2">はじめに</h2>
+                                <p className="text-slate-600 text-sm leading-relaxed">
+                                    本アプリケーションは、令和7年8月18日に発生した大阪市中央区における火災事故の教訓を学び、
+                                    二度と同様の事故を防ぐことを目的としています。
+                                    点数による評価は行いません。各項目を読み進め、現場活動における安全管理の重要性を再確認してください。
+                                </p>
+                            </div>
+                        )}
+
+                        {/* カテゴリーヘッダー */}
+                        <div className="mb-6 flex items-center border-b border-slate-200 pb-4">
+                            <div className="p-3 bg-slate-100 rounded-full mr-4 text-slate-700">
+                                {activeCategory.icon}
+                            </div>
+                            <h2 className="text-2xl font-bold text-slate-800">{activeCategory.title}</h2>
+                        </div>
+
+                        {/* Q&Aリスト */}
+                        <div className="space-y-4">
+                            {activeCategory.questions.map((item, idx) => (
+                                <AccordionItem key={idx} question={item.q} answer={item.a} index={idx + 1} />
+                            ))}
+                        </div>
+
+                        {/* フッターナビゲーション */}
+                        <div className="mt-12 flex justify-between pt-6 border-t border-slate-200">
+                            <button
+                                onClick={() => handleTabChange(Math.max(0, activeTab - 1))}
+                                disabled={activeTab === 0}
+                                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                                    activeTab === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'
+                                }`}
+                            >
+                                &larr; 前の章へ
+                            </button>
+                            <span className="text-slate-400 text-sm py-2">
+                                {activeTab + 1} / {faqData.length}
+                            </span>
+                            <button
+                                onClick={() => handleTabChange(Math.min(faqData.length - 1, activeTab + 1))}
+                                disabled={activeTab === faqData.length - 1}
+                                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                                    activeTab === faqData.length - 1 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'
+                                }`}
+                            >
+                                次の章へ &rarr;
+                            </button>
+                        </div>
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
