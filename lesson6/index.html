@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Influenza Master 2025/26</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (for JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom Styles -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+        h1, h2, .font-serif {
+            font-family: 'Noto Serif JP', serif;
+        }
+        
+        /* Custom Animations */
+        .animate-in {
+            animation-duration: 0.5s;
+            animation-fill-mode: both;
+        }
+        .fade-in {
+            animation-name: fadeIn;
+        }
+        .slide-in-from-bottom-4 {
+            animation-name: slideInBottom;
+        }
+        .slide-in-from-right-8 {
+            animation-name: slideInRight;
+        }
+        .zoom-in-95 {
+            animation-name: zoomIn;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideInBottom {
+            from { transform: translateY(1rem); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(2rem); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes zoomIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- ICONS (Inline SVG components to avoid external dependencies) ---
+        const IconBase = ({ children, ...props }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>{children}</svg>
+        );
+        const BookOpen = (props) => <IconBase {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></IconBase>;
+        const HelpCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></IconBase>;
+        const CheckCircle = (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
+        const XCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></IconBase>;
+        const Trophy = (props) => <IconBase {...props}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></IconBase>;
+        const ChevronDown = (props) => <IconBase {...props}><polyline points="6 9 12 15 18 9"/></IconBase>;
+        const ChevronUp = (props) => <IconBase {...props}><polyline points="18 15 12 9 6 15"/></IconBase>;
+        const ArrowRight = (props) => <IconBase {...props}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></IconBase>;
+        const RefreshCcw = (props) => <IconBase {...props}><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></IconBase>;
+        const Award = (props) => <IconBase {...props}><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></IconBase>;
+        const Star = (props) => <IconBase {...props}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></IconBase>;
+
+
+        // --- DATA: FAQ (50 items) ---
+        const FAQ_DATA = [
+          {
+            category: "流行状況・ウイルス",
+            questions: [
+              { q: "2025/26シーズンのインフルエンザの流行開始はいつ頃でしたか？", a: "例年（12月後半〜1月）よりも早く、2025年11月後半から患者数が急増しました。その後、年末年始を挟んでも減少せず、1月に入っても流行が持続する傾向が見られました。" },
+              { q: "今シーズン流行しているインフルエンザの型は何ですか？", a: "シーズン前半（11月〜1月）はA型（H3N2亜型）が主流でした。しかし、2026年2月に入り、B型（ビクトリア系統）への置き換わりが進んでおり、二峰性の流行または混合流行の様相を呈しています。" },
+              { q: "「リレー感染」とは何ですか？", a: "同じシーズン中に、A型に感染した後、回復してからB型に再感染することです。A型に感染して獲得した免疫はB型には効果がないため、流行株が入れ替わる時期（2月以降など）に特に注意が必要です。" },
+              { q: "A型とB型の症状に違いはありますか？", a: "A型（特にH3N2）は高熱、関節痛、全身倦怠感がはっきり出やすい傾向があります。B型も同様の症状が出ますが、消化器症状を伴うこともあります。重要なのは「一度かかったから大丈夫」と油断せず、再度発熱した場合はB型を疑う必要がある点です。" },
+              { q: "2025/26シーズンの流行の地域的な特徴はありますか？", a: "当初は九州地方などの南西部で流行が拡大し、その後全国へ広がりました。2026年1月時点では、多くの都道府県で警報レベルを超えており、全国規模で流行が続いています。" },
+              { q: "鳥インフルエンザと季節性インフルエンザは関係ありますか？", a: "直接の関係はありません。2026年1月に国内で高病原性鳥インフルエンザの報告がありましたが、これは家禽（鶏など）の病気であり、現在ヒトの間で流行している季節性インフルエンザとは別のものです。" },
+              { q: "新型コロナウイルスとの同時流行はありますか？", a: "はい。2025/26シーズンも新型コロナウイルスと同時期に流行することが懸念されており、医療機関の負担増大に注意が必要です。" }
+            ]
+          },
+          {
+            category: "ワクチン",
+            questions: [
+              { q: "2025/26シーズンのワクチンの最大の特徴は何ですか？", a: "従来の「4価ワクチン」から、B型山形系統を除いた「3価ワクチン」に変更された点です。これは、2020年3月以降、世界的にB型山形系統が検出されていないため、WHOの推奨に基づき除外されたものです。" },
+              { q: "「3価ワクチン」の構成はどうなっていますか？", a: "A型2株（H1N1、H3N2）とB型1株（ビクトリア系統）の計3株で構成されています。2025/26シーズンは、A型H3N2株のみ昨シーズンから変更されています。" },
+              { q: "ワクチンの供給量は足りていますか？", a: "十分な量が確保されています。2025/26シーズンの供給量は約5,293万回分（前年比約116％）となる見込みで、近年の使用実績を上回る量が計画されています。" },
+              { q: "ワクチンはいつ接種するのが最適ですか？", a: "流行のピークを迎える前の、10月から12月上旬までに接種を終えることが推奨されます。効果が出るまで約2週間かかります。" },
+              { q: "ワクチン接種は何回必要ですか？", a: "13歳以上は原則1回、13歳未満は2回接種が推奨されています。ただし、9歳以上の小児や健康成人については、WHOや米国CDCは1回接種で十分とする見解も示しています。" },
+              { q: "「フルミスト」とはどのようなワクチンですか？", a: "鼻の中に噴霧するタイプの「経鼻弱毒生インフルエンザワクチン」です。2歳以上19歳未満が対象で、左右の鼻腔に1回ずつ噴霧して接種完了となります（原則1回接種）。" },
+              { q: "注射のワクチンとフルミスト、どちらが良いですか？", a: "効果は概ね同等とされていますが、フルミストは粘膜免疫を誘導するため、感染防御効果が期待できます。ただし、妊婦や重度の喘息がある人、免疫不全の人はフルミストを接種できません。" },
+              { q: "受験生ですが、効果を高めるために2回接種すべきですか？", a: "13歳以上であれば医学的には1回で十分な抗体がつくとされていますが、受験生などでより確実な免疫を希望する場合は、医師と相談の上で2回接種を行うことも可能です。" },
+              { q: "昨年ワクチンを打っていても、今年も必要ですか？", a: "はい。インフルエンザウイルスは毎年少しずつ変異しており、ワクチンの製造株も流行予測に合わせて変更されるため、毎年の接種が推奨されます。" },
+              { q: "妊娠中でもワクチン接種はできますか？", a: "はい、不活化ワクチン（注射）は妊娠中の全期間において推奨されており、母子ともに重症化予防のメリットがあります。ただし、フルミスト（生ワクチン）は避ける必要があります。" }
+            ]
+          },
+          {
+            category: "検査・診断",
+            questions: [
+              { q: "熱が出てすぐ検査に行っても大丈夫ですか？", a: "発熱直後（6時間以内など）はウイルス量が少なく、従来の迅速抗原検査キットでは「偽陰性（本当はインフルエンザなのに陰性と出る）」になる可能性があります。" },
+              { q: "検査を受けるのに最適なタイミングはいつですか？", a: "発症（発熱）から12時間〜48時間以内が、従来の検査キットの精度が最も高くなるタイミングです。" },
+              { q: "「nodoca（ノドカ）」とは何ですか？", a: "AIを搭載した新しいインフルエンザ診断機器です。咽頭（のど）の画像をAIが解析し、発症から12時間以内でも高い精度（感度約85%）で診断が可能です。" },
+              { q: "鼻の奥に綿棒を入れる検査が苦手ですが、他の方法はありますか？", a: "上記の「nodoca」であれば、のどの写真を撮るだけなので痛みがありません。導入している医療機関を探すのが良いでしょう。" },
+              { q: "検査キットで陰性でしたが、インフルエンザの可能性はありますか？", a: "はい。検査のタイミングが早すぎたり、検体の採取が不十分だったりすると陰性になることがあります。周囲の流行状況や症状から、医師が「臨床診断」としてインフルエンザと診断し、治療を開始することもあります。" },
+              { q: "市販の検査キットは信頼できますか？", a: "目安にはなりますが、医療用の「鼻咽頭ぬぐい液」ではなく「鼻腔ぬぐい液」を使うタイプが多く、医療機関の検査より感度が若干劣る場合があります。陰性でも感染を完全に否定するものではありません。" }
+            ]
+          },
+          {
+            category: "治療・薬",
+            questions: [
+              { q: "インフルエンザの治療薬にはどんな種類がありますか？", a: "主にタミフル（内服・5日間）、リレンザ（吸入・5日間）、イナビル（吸入・1回のみ）、ゾフルーザ（内服・1回のみ）、ラピアクタ（点滴）があります。" },
+              { q: "薬はいつまでに飲めば効果がありますか？", a: "発症から48時間以内に服用を開始することが重要です。それ以降はウイルスの増殖がピークを過ぎているため、薬の効果が限定的になります。" },
+              { q: "「ゾフルーザ」はB型にも効きますか？", a: "はい、効きます。一時期「B型にはゾフルーザが良い」という説がありましたが、医学的な推奨度としてはタミフル等と同等です。ただし、12歳未満（特に5歳以下）では耐性ウイルスが出現しやすいため、慎重な投与が求められます。" },
+              { q: "1回飲むだけの薬と、5日間飲む薬、どちらが良いですか？", a: "利便性では1回投与（ゾフルーザ、イナビル）が優れますが、耐性リスクや年齢、基礎疾患などを考慮して医師が選択します。タミフルは最も使用実績が豊富で、全ての年齢や妊婦にも使いやすい標準薬です。" },
+              { q: "妊娠中にインフルエンザにかかりました。薬は飲めますか？", a: "はい。妊娠中は重症化リスクが高いため、発症早期の抗インフルエンザ薬使用が推奨されます。日本では特に「タミフル」が安全性データが豊富で第一選択とされます。" },
+              { q: "子供がインフルエンザにかかった際、解熱剤は何を使えばいいですか？", a: "「アセトアミノフェン」を使用してください。アスピリンやボルタレンなどのNSAIDs（非ステロイド性抗炎症薬）は、インフルエンザ脳症のリスクを高める可能性があるため、子供には使用しないでください。" },
+              { q: "薬を飲んだ後に子供が異常な行動をとりました。薬のせいですか？", a: "薬の種類に関わらず、インフルエンザそのものの症状として異常行動（急に走り出す、飛び降りようとする等）が出ることがあります。発熱から2日間は、子供を一人にしない対策が必要です。" },
+              { q: "薬を使わずに自然に治すことはできますか？", a: "基礎疾患のない若年〜中年者で症状が軽ければ、水分を摂って安静にしていれば自然治癒します。ただし、高齢者や乳幼児は重症化リスクがあるため受診が推奨されます。" }
+            ]
+          },
+          {
+            category: "療養期間・学校・仕事",
+            questions: [
+              { q: "学校は何日休まなければなりませんか？", a: "学校保健安全法では「発症した後5日を経過し、かつ、解熱した後2日（幼児は3日）を経過するまで」が出席停止期間と定められています。" },
+              { q: "「発症した後5日」の数え方は？", a: "発熱などの症状が出た日を「0日目」としてカウントします。翌日が1日目となり、5日目まで休み、最短で6日目から登校可能です（解熱の条件も満たしている場合）。" },
+              { q: "大人の出勤停止期間に法律はありますか？", a: "大人（社会人）には法律による一律の出勤停止規定はありません。しかし、多くの企業が学校の基準（発症後5日かつ解熱後2日）を目安に就業規則を定めています。" },
+              { q: "職場や学校に復帰する際、「治癒証明書」や「陰性証明書」は必要ですか？", a: "厚生労働省は、職場や学校が証明書の提出を求めることは望ましくない（不要である）としています。医療機関の負担軽減のためにも、提出は原則不要です。" },
+              { q: "家族がインフルエンザになった場合、濃厚接触者として出勤停止になりますか？", a: "基本的には濃厚接触者としての法的な出勤停止はありません。会社の規定に従いますが、自身が無症状であれば出勤可能な場合が多いです。ただし、マスク着用などの配慮が必要です。" },
+              { q: "熱が下がったらすぐに出歩いてもいいですか？", a: "いいえ。解熱後もウイルスを排出している可能性があるため、解熱後2日間は外出を控えるべきです。" }
+            ]
+          },
+          {
+            category: "予防・環境対策",
+            questions: [
+              { q: "インフルエンザウイルスの感染経路は？", a: "主に「飛沫感染（咳やくしゃみ）」と「接触感染（ウイルスが付着した手で触れる）」ですが、換気が不十分な空間では「エアロゾル感染（空気中に漂う微粒子による感染）」も起こります。" },
+              { q: "効果的な換気の方法を教えてください。", a: "対角線上にある2箇所の窓を開けて空気の通り道を作ると効率的です。1時間に1回、5〜10分程度行うのが目安です。" },
+              { q: "冬場の換気で部屋が寒くなるのが嫌です。対策は？", a: "暖房をつけたまま換気を行うと、壁や床が冷え切らず、室温の回復が早くなります。また、換気時間を短くして回数を増やすのも有効です。" },
+              { q: "加湿器は必要ですか？最適な湿度は？", a: "はい、必要です。湿度が40%未満になるとウイルスが生存しやすくなります。湿度40〜60%を保つことが推奨されます。" },
+              { q: "空気清浄機は換気の代わりになりますか？", a: "換気の完全な代わりにはなりません。空気清浄機は粒子を濾過しますが、二酸化炭素などを排出できません。窓開け換気と併用することで効果が高まります。" },
+              { q: "家族が感染した場合、部屋はどうすればいいですか？", a: "可能であれば感染者を個室に隔離し、看病する人を限定します。感染者の部屋も定期的に換気し、共有スペース（トイレなど）の換気も強化しましょう。" },
+              { q: "マスクは予防に効果がありますか？", a: "不織布マスクの着用は、飛沫を吸い込む量を減らし、感染者からの飛沫拡散を防ぐために有効です。" },
+              { q: "アルコール消毒は効きますか？", a: "はい、インフルエンザウイルスにはアルコール消毒が有効です。流水と石鹸による手洗いも物理的な除去に効果的です。" }
+            ]
+          },
+          {
+            category: "その他・特殊なケース",
+            questions: [
+              { q: "インフルエンザ脳症とは何ですか？", a: "インフルエンザに伴って発症する重篤な合併症で、意識障害やけいれんなどが起きます。主に5歳以下の小児に見られますが、早期発見と治療が重要です。" },
+              { q: "高齢者のインフルエンザで特に注意すべきことは？", a: "典型的な高熱が出ないことがあり、発見が遅れることがあります。また、肺炎を併発して重症化しやすいため、元気がない、食欲がないといった変化に注意が必要です。" },
+              { q: "インフルエンザ薬の「予防投与」はできますか？", a: "受験生や、感染者と同居している高齢者・基礎疾患がある人などは、自費診療（全額自己負担）で予防投与を受けることができる場合があります。通常、タミフルなどを1日1回、7〜10日間服用します。" },
+              { q: "オンライン診療でインフルエンザの薬はもらえますか？", a: "はい、可能です。検査キットの結果や症状に基づき、医師の判断で処方され、薬を配送してもらうことができます。" },
+              { q: "2025/26シーズンの流行はいつまで続きそうですか？", a: "B型への移行（リレー感染）が見られるため、春先（3月〜4月頃）まで流行が長引く可能性があります。長期間の対策継続が必要です。" }
+            ]
+          }
+        ];
+
+        // --- DATA: QUIZ (50 items) ---
+        const QUIZ_DATA = [
+          // 第1章
+          {
+            id: 1,
+            category: "流行特徴と基礎知識",
+            q: "2025/26シーズンのインフルエンザワクチンの大きな変更点は何ですか？",
+            options: ["4価ワクチンから3価ワクチンへ変更された", "3価ワクチンから4価ワクチンへ変更された", "A型のみを含む2価ワクチンになった", "mRNAワクチンのみになった"],
+            correct: 0,
+            explanation: "2025/26シーズンより、B型「山形系統」が除外され、A型2株＋B型1株（ビクトリア系統）の「3価ワクチン」に変更されました。"
+          },
+          {
+            id: 2,
+            category: "流行特徴と基礎知識",
+            q: "2025/26シーズンのワクチンから除外されたインフルエンザウイルスの系統はどれですか？",
+            options: ["A型 H1N1", "A型 H3N2", "B型 ビクトリア系統", "B型 山形系統"],
+            correct: 3,
+            explanation: "2020年3月以降、世界的にB型「山形系統」の検出が確認されていないため、WHOの推奨に基づきワクチン株から除外されました。"
+          },
+          {
+            id: 3,
+            category: "流行特徴と基礎知識",
+            q: "2025/26シーズンの流行初期（11月〜1月）に主流となった型はどれですか？",
+            options: ["A型（H1N1）", "A型（H3N2）", "B型（山形系統）", "B型（ビクトリア系統）"],
+            correct: 1,
+            explanation: "シーズン前半はA型、特にH3N2亜型が支配的でした。H3N2は高齢者の入院や重症化リスクが高い傾向があります。"
+          },
+          {
+            id: 4,
+            category: "流行特徴と基礎知識",
+            q: "2026年2月以降に見られている流行の傾向として正しいものはどれですか？",
+            options: ["インフルエンザは完全に終息した", "再びA型（H1N1）が増加している", "B型（ビクトリア系統）への置き換わりが進んでいる", "新型のインフルエンザが発生した"],
+            correct: 2,
+            explanation: "2月以降、流行の主体がA型からB型（ビクトリア系統）へ移行しつつあり、二峰性の流行または混合流行の様相を呈しています。"
+          },
+          {
+            id: 5,
+            category: "流行特徴と基礎知識",
+            q: "「リレー感染」とはどのような現象を指しますか？",
+            options: ["インフルエンザとコロナに同時にかかること", "家族全員が順番にインフルエンザにかかること", "同じシーズン中にA型とB型に連続してかかること", "ペットからヒトへ感染すること"],
+            correct: 2,
+            explanation: "A型に感染してもB型への免疫はつかないため、同じシーズン中にA型治癒後、B型に再感染することを「リレー感染」と呼びます。"
+          },
+          {
+            id: 6,
+            category: "流行特徴と基礎知識",
+            q: "インフルエンザA型（H3N2）の症状の特徴として正しいものはどれですか？",
+            options: ["微熱が長く続く", "鼻水だけで発熱はない", "発熱、咽頭痛、全身倦怠感がはっきり出やすい", "腹痛と下痢が主症状である"],
+            correct: 2,
+            explanation: "A型（H3N2）は、発熱、咽頭痛、全身倦怠感といった症状が比較的はっきり出やすい傾向があります。"
+          },
+          {
+            id: 7,
+            category: "流行特徴と基礎知識",
+            q: "2025/26シーズンのワクチン供給量についての説明で正しいものはどれですか？",
+            options: ["前年より大幅に減少している", "不足が懸念されている", "過去最大級の不足が見込まれる", "前年比約116%と十分な量が確保されている"],
+            correct: 3,
+            explanation: "ワクチン供給量は約5,293万回分（前年使用量比約116%）となる見込みで、近年の使用実績を上回る量が計画されています。"
+          },
+          {
+            id: 8,
+            category: "流行特徴と基礎知識",
+            q: "2026年1月に国内で報告された「高病原性鳥インフルエンザ」について正しい記述はどれですか？",
+            options: ["現在流行している季節性インフルエンザと同じものである", "すでにヒトからヒトへの流行が起きている", "季節性インフルエンザとは別の感染症であり直接の関係はない", "今年のワクチンに含まれている"],
+            correct: 2,
+            explanation: "家禽での発生であり、ヒトの間で流行している季節性インフルエンザとは別のものです。混同しないよう注意が必要です。"
+          },
+          // 第2章
+          {
+            id: 9,
+            category: "ワクチン接種",
+            q: "13歳以上の健康な成人における、インフルエンザワクチンの推奨接種回数は？",
+            options: ["原則1回", "原則2回", "原則3回", "接種の必要はない"],
+            correct: 0,
+            explanation: "13歳以上は原則1回接種です。医学的な理由がある場合を除き、1回で十分な抗体価の上昇が得られるとされています。"
+          },
+          {
+            id: 10,
+            category: "ワクチン接種",
+            q: "今シーズンから国内で発売された「フルミスト」とはどのようなワクチンですか？",
+            options: ["筋肉注射タイプの不活化ワクチン", "経口摂取するタイプの飲み薬", "鼻の中に噴霧するタイプの生ワクチン", "皮膚に貼るパッチタイプのワクチン"],
+            correct: 2,
+            explanation: "フルミストは、2歳以上19歳未満を対象とした、鼻の中に噴霧するタイプの経鼻弱毒生インフルエンザワクチンです。"
+          },
+          {
+            id: 11,
+            category: "ワクチン接種",
+            q: "フルミスト（経鼻ワクチン）の接種対象年齢はどれですか？",
+            options: ["生後6ヶ月以上すべての人", "2歳以上19歳未満", "13歳以上65歳未満", "65歳以上の高齢者のみ"],
+            correct: 1,
+            explanation: "フルミストの承認されている対象年齢は2歳以上19歳未満です。"
+          },
+          {
+            id: 12,
+            category: "ワクチン接種",
+            q: "インフルエンザワクチンの接種に最適な時期はいつ頃ですか？",
+            options: ["流行のピークを迎えてから", "10月から12月上旬まで", "翌年の3月以降", "夏の間"],
+            correct: 1,
+            explanation: "流行のピーク（例年1月末〜3月上旬）を迎える前の、12月中旬まで（目安として10月〜12月上旬）に接種を終えることが推奨されます。"
+          },
+          {
+            id: 13,
+            category: "ワクチン接種",
+            q: "昨シーズンにワクチンを接種していても、今シーズンも接種すべきですか？",
+            options: ["昨年打っていれば5年は効果が続くので不要", "ウイルスの流行株は毎年変化するため、今年も接種が推奨される", "抗体値が高すぎるため打ってはいけない", "A型にかかったことがある人は不要"],
+            correct: 1,
+            explanation: "流行するウイルスの株は毎年変化し、ワクチンの効果も時間とともに減衰するため、毎年の接種が推奨されます。"
+          },
+          {
+            id: 14,
+            category: "ワクチン接種",
+            q: "妊娠中のインフルエンザワクチン（不活化ワクチン）接種について正しい記述は？",
+            options: ["胎児に悪影響があるため絶対に避ける", "妊娠初期のみ避ける", "妊娠全期間を通じて推奨される", "出産後まで待つべきである"],
+            correct: 2,
+            explanation: "不活化ワクチンは妊娠中の全期間において推奨されており、母子の重症化予防などのメリットが確認されています。ただし、フルミスト（生ワクチン）は避けます。"
+          },
+          {
+            id: 15,
+            category: "ワクチン接種",
+            q: "インフルエンザワクチンの主な効果として、最も期待されているものは何ですか？",
+            options: ["100%感染を防ぐ（感染予防）", "発症を完全に防ぐ（発症予防）", "重症化や死亡を予防する（重症化予防）", "他の人への感染力を完全になくす"],
+            correct: 2,
+            explanation: "ワクチンは感染や発症を完全に防ぐものではありませんが、発病後の重症化や死亡を予防することに一定の効果があります。"
+          },
+          {
+            id: 16,
+            category: "ワクチン接種",
+            q: "13歳未満の子供のワクチン接種回数は原則何回ですか？",
+            options: ["1回", "2回", "3回", "4回"],
+            correct: 1,
+            explanation: "13歳未満は、より高い抗体価を得るために原則2回接種（2〜4週間の間隔）が推奨されています。"
+          },
+          // 第3章
+          {
+            id: 17,
+            category: "感染対策と環境",
+            q: "インフルエンザウイルスの生存率を下げるための最適な湿度は？",
+            options: ["20〜30%", "40〜60%", "80%以上", "湿度は関係ない"],
+            correct: 1,
+            explanation: "湿度が40%未満になるとウイルスが生存しやすくなります。40〜60%を保つことでウイルスの生存率が下がり、気道粘膜の防御機能も保たれます。"
+          },
+          {
+            id: 18,
+            category: "感染対策と環境",
+            q: "インフルエンザの主な感染経路に含まれないものはどれですか？",
+            options: ["飛沫感染", "接触感染", "空気感染（エアロゾル感染）", "経皮感染（蚊などの媒介）"],
+            correct: 3,
+            explanation: "主な経路は飛沫感染と接触感染ですが、換気が不十分な場合はエアロゾル感染も起こります。蚊などの媒介による経皮感染はありません。"
+          },
+          {
+            id: 19,
+            category: "感染対策と環境",
+            q: "効果的な換気の頻度の目安として適切なものは？",
+            options: ["1日に1回、30分程度", "半日に1回、1時間程度", "1時間に1〜2回、5〜10分程度", "換気は不要"],
+            correct: 2,
+            explanation: "1〜2時間に1回、5〜10分程度の換気が推奨されています。こまめに行うことでウイルス濃度を下げることができます。"
+          },
+          {
+            id: 20,
+            category: "感染対策と環境",
+            q: "効率的に部屋の空気を入れ替える「対角換気」とはどのような方法ですか？",
+            options: ["窓を1つだけ全開にする", "対角線上にある2箇所の窓（またはドア）を開けて空気の通り道を作る", "換気扇のみを回す", "エアコンの風量を最大にする"],
+            correct: 1,
+            explanation: "対角線上にある2箇所を開放することで空気の通り道ができ、効率的に換気が行えます。"
+          },
+          {
+            id: 21,
+            category: "感染対策と環境",
+            q: "救急車内や密閉された部屋での活動時、ウイルス濃度を下げるために重要な行動は？",
+            options: ["加湿器を止める", "換気を行う（窓開けや換気扇の使用）", "室温を30度以上にする", "消臭スプレーを撒く"],
+            correct: 1,
+            explanation: "換気を行うことで、室内のウイルスを含む空気を排出し、物理的にウイルス濃度を下げることができます。"
+          },
+          {
+            id: 22,
+            category: "感染対策と環境",
+            q: "冬場、換気による室温低下を防ぐための工夫として正しいものは？",
+            options: ["暖房を消してから換気する", "暖房をつけたまま換気する", "換気中は厚着をするよう指示するだけにする", "換気時間を1時間以上とる"],
+            correct: 1,
+            explanation: "暖房をつけたまま換気を行うと、壁や床が冷え切らず、窓を閉めた後の室温回復が早くなります。"
+          },
+          {
+            id: 23,
+            category: "感染対策と環境",
+            q: "手洗い以外で手指のウイルス対策に有効なものは何ですか？",
+            options: ["水洗いのみ", "アルコール消毒", "乾いた布で拭く", "ハンドクリームを塗る"],
+            correct: 1,
+            explanation: "インフルエンザウイルスはエンベロープを持つため、アルコール消毒が有効です。流水と石鹸による手洗いも物理的除去に効果的です。"
+          },
+          {
+            id: 24,
+            category: "感染対策と環境",
+            q: "家庭内で感染者が出た場合の対策として不適切なものは？",
+            options: ["感染者を個室に隔離する", "看病する人を限定する", "感染者の部屋を常に密閉し、換気しない", "共有部分（トイレなど）の換気を強化する"],
+            correct: 2,
+            explanation: "感染者の部屋も定期的に換気し、ウイルス濃度を下げる必要があります。密閉するとウイルスが充満し、看病する人のリスクが高まります。"
+          },
+          {
+            id: 25,
+            category: "感染対策と環境",
+            q: "マスク着用の主な目的として正しいものは？",
+            options: ["ウイルスを完全に遮断する", "飛沫の拡散を防ぐ（咳エチケット）", "口元の保湿のみ", "酸素摂取量を増やす"],
+            correct: 1,
+            explanation: "不織布マスクの着用は、感染者からの飛沫拡散を防ぐ効果が高く、飛沫を吸い込む量を減らす効果もあります。"
+          },
+          {
+            id: 26,
+            category: "感染対策と環境",
+            q: "エアコンや空気清浄機は換気の代わりになりますか？",
+            options: ["完全に代わりになる", "換気機能付きエアコンなら窓開けは不要", "完全な代わりにはならず、窓開け換気との併用が必要", "換気扇よりも効果が高い"],
+            correct: 2,
+            explanation: "一般的なエアコンや空気清浄機は空気を循環・濾過するだけで、二酸化炭素の排出や外気との入れ替えは行いません（換気機能付きを除く）。窓開け換気との併用が効果的です。"
+          },
+          // 第4章
+          {
+            id: 27,
+            category: "検査と診断",
+            q: "医学的に「発症日」とはいつを指しますか？",
+            options: ["喉の違和感があった日", "発熱などの主要症状が現れた日（0日目）", "病院に行った日", "熱が下がった日"],
+            correct: 1,
+            explanation: "発熱などの主要症状が現れた時点を「発症」とし、その日を「0日目」としてカウントします。"
+          },
+          {
+            id: 28,
+            category: "検査と診断",
+            q: "一般的な迅速抗原検査キットの精度が最も高くなるタイミングはいつですか？",
+            options: ["発熱直後（6時間以内）", "発熱から12時間〜48時間", "発熱から5日目以降", "解熱後"],
+            correct: 1,
+            explanation: "発熱直後はウイルス量が少なく偽陰性になりやすいため、発熱から12〜24時間以降（48時間以内）が最も精度が高くなります。"
+          },
+          {
+            id: 29,
+            category: "検査と診断",
+            q: "発熱直後（6時間以内）に検査を受けて「陰性」だった場合、正しい解釈は？",
+            options: ["インフルエンザではないと確定した", "ウイルス量が少なくて反応しなかった可能性がある（偽陰性）", "別の病気であることが確定した", "翌日以降も陽性になることはない"],
+            correct: 1,
+            explanation: "発症早期はウイルス量が検出限界以下のことがあり、本当は感染していても陰性となる「偽陰性」の可能性があります。"
+          },
+          {
+            id: 30,
+            category: "検査と診断",
+            q: "新しい診断技術「nodoca（ノドカ）」の特徴として正しいものは？",
+            options: ["血液を採取して診断する", "鼻の奥に綿棒を入れる", "AIが咽頭画像等を解析し、発症早期でも判定可能", "自宅で自分で検査できる"],
+            correct: 2,
+            explanation: "nodocaは咽頭画像をAIが解析する機器で、発症から12時間以内の早期でも高い精度で診断が可能です。鼻への綿棒挿入が不要です。"
+          },
+          {
+            id: 31,
+            category: "検査と診断",
+            q: "検査キットで陰性でも、医師がインフルエンザと診断することはありますか？",
+            options: ["法律で禁止されている", "検査結果が絶対なのでありえない", "症状や流行状況から「臨床診断」として診断・治療することがある", "再検査するまで診断は保留される"],
+            correct: 2,
+            explanation: "検査陰性でも感染を完全には否定できないため、周囲の流行状況や典型的症状から、医師の判断（臨床診断）で治療を開始することがあります。"
+          },
+          {
+            id: 32,
+            category: "検査と診断",
+            q: "自宅でのセルフ検査（市販キット）についての注意点は？",
+            options: ["医療機関の検査より精度が高いため推奨される", "陰性であれば出勤・登校して良い証明になる", "鼻腔ぬぐい液タイプは医療用より感度が劣る場合があり、陰性でも感染を否定できない", "陽性が出ても受診する必要はない"],
+            correct: 2,
+            explanation: "市販キットは鼻腔ぬぐい液を使用するものが多く、医療機関の鼻咽頭ぬぐい液より感度が劣る場合があります。陰性でも感染を完全に否定するものではありません。"
+          },
+          // 第5章
+          {
+            id: 33,
+            category: "治療と薬",
+            q: "抗インフルエンザ薬は、発症から何時間以内の使用が推奨されていますか？",
+            options: ["12時間以内", "24時間以内", "48時間以内", "72時間以内"],
+            correct: 2,
+            explanation: "ウイルスの増殖がピークに達する前の、発症から48時間以内に服用を開始することが最も効果的です。"
+          },
+          {
+            id: 34,
+            category: "治療と薬",
+            q: "1回の服用だけで治療が完結する内服薬（飲み薬）はどれですか？",
+            options: ["タミフル", "リレンザ", "ゾフルーザ", "ラピアクタ"],
+            correct: 2,
+            explanation: "ゾフルーザは単回投与（1回飲むだけ）で治療が完結する内服薬です。"
+          },
+          {
+            id: 35,
+            category: "治療と薬",
+            q: "1回の吸入だけで治療が完結する吸入薬はどれですか？",
+            options: ["イナビル", "リレンザ", "タミフル", "ゾフルーザ"],
+            correct: 0,
+            explanation: "イナビルは長時間作用型の吸入薬で、1回の吸入で治療が完了します。"
+          },
+          {
+            id: 36,
+            category: "治療と薬",
+            q: "「タミフル」の服用期間は通常どのくらいですか？",
+            options: ["1回のみ", "2日間", "5日間（1日2回）", "10日間"],
+            correct: 2,
+            explanation: "タミフルは通常、1日2回、5日間服用する必要があります。"
+          },
+          {
+            id: 37,
+            category: "治療と薬",
+            q: "点滴で投与する抗インフルエンザ薬はどれですか？",
+            options: ["ラピアクタ", "タミフル", "イナビル", "ゾフルーザ"],
+            correct: 0,
+            explanation: "ラピアクタは点滴静注薬で、内服や吸入が困難な患者や重症例に使用されます。"
+          },
+          {
+            id: 38,
+            category: "治療と薬",
+            q: "子供のインフルエンザ発熱時、使用してはいけない解熱剤は？",
+            options: ["アセトアミノフェン", "アスピリンやボルタレン（NSAIDs）", "すべての解熱剤", "冷却シート"],
+            correct: 1,
+            explanation: "アスピリンなどのサリチル酸系やNSAIDsは、インフルエンザ脳症やライ症候群のリスクを高めるため、子供には使用禁忌です。"
+          },
+          {
+            id: 39,
+            category: "治療と薬",
+            q: "抗インフルエンザ薬の「予防投与」について正しい記述は？",
+            options: ["誰でも保険適用で安く受けられる", "受験生やハイリスク者等が、自費診療（全額自己負担）で受けることができる", "ワクチンと同じ効果が1年間続く", "予防効果は100%である"],
+            correct: 1,
+            explanation: "予防投与は原則として自費診療となります。感染者と同居する高齢者や受験生などが対象となることが多く、服用期間中のみ効果が期待できます。"
+          },
+          {
+            id: 40,
+            category: "治療と薬",
+            q: "インフルエンザB型に対する治療薬選択の際、医師の間で議論がある点は？",
+            options: ["タミフルが効かない", "イナビルが効かない", "ゾフルーザの耐性や推奨度について議論がある", "B型には薬を使う必要がない"],
+            correct: 2,
+            explanation: "ゾフルーザはB型にも有効ですが、12歳未満（特に低年齢）での耐性ウイルス出現リスクなどから、日本小児科学会等のガイドラインで慎重な判断が求められています。"
+          },
+          // 第6章
+          {
+            id: 41,
+            category: "療養期間と出勤復帰",
+            q: "学校保健安全法で定められている「出席停止期間」の基準は？",
+            options: ["解熱した翌日から", "発症した後5日を経過し、かつ、解熱した後2日（幼児は3日）を経過するまで", "発症した後3日を経過するまで", "検査で陰性になるまで"],
+            correct: 1,
+            explanation: "学校保健安全法では「発症後5日経過、かつ解熱後2日（幼児は3日）経過」の両方を満たすまでが出席停止と定められています。"
+          },
+          {
+            id: 42,
+            category: "療養期間と出勤復帰",
+            q: "「発症した後5日」を数える際、発症日（発熱した日）は何日目とカウントしますか？",
+            options: ["1日目", "0日目", "0.5日目", "カウントしない"],
+            correct: 1,
+            explanation: "発症した日を「0日目」とし、翌日を1日目としてカウントします。つまり、発症日の翌日から数えて5日間は休む必要があります。"
+  
+          },
+          {
+            id: 43,
+            category: "療養期間と出勤復帰",
+            q: "大人の出勤停止期間について、法律の定めはどうなっていますか？",
+            options: ["学校と同じ法律が適用される", "法律による一律の規定はないが、多くの企業が学校の基準を目安にしている", "解熱したらすぐに出勤しなければならない", "労働基準法で10日間の休みが義務付けられている"],
+            correct: 1,
+            explanation: "社会人に対する法的な出勤停止規定はありませんが、感染拡大防止のため、学校保健安全法の基準（発症後5日かつ解熱後2日）を目安にする企業が多いです。"
+          },
+          {
+            id: 44,
+            category: "療養期間と出勤復帰",
+            q: "職場復帰の際、「治癒証明書」や「陰性証明書」の提出は必須ですか？",
+            options: ["法律で必須とされている", "会社が求めたら必ず提出しなければならない", "厚生労働省は提出を求めることは望ましくない（不要）としている", "保健所に取りに行く必要がある"],
+            correct: 2,
+            explanation: "医療機関の負担軽減や、陰性証明の困難さから、厚生労働省は職場が証明書の提出を求めることは望ましくない（不要である）としています。"
+          },
+          {
+            id: 45,
+            category: "療養期間と出勤復帰",
+            q: "熱が下がった直後に出歩いてはいけない理由は？",
+            options: ["ぶり返すから", "解熱後も一定期間ウイルスを排出しており、他人にうつす可能性があるから", "法律で罰せられるから", "ワクチンの効果が切れるから"],
+            correct: 1,
+            explanation: "解熱後も2日間程度はウイルスを排出している可能性があるため、感染拡大防止のために外出を控える必要があります。"
+          },
+          // 第7章
+          {
+            id: 46,
+            category: "リスク管理とその他",
+            q: "インフルエンザに伴う「異常行動」について正しい説明は？",
+            options: ["特定の薬（タミフル）だけで起きる", "薬を飲まなければ起きない", "薬の種類や服用の有無に関わらず起きる可能性がある", "成人女性に最も多い"],
+            correct: 2,
+            explanation: "異常行動は薬の種類に関わらず、また薬を服用していない場合でも報告されています。特に発熱から2日間は注意が必要です。"
+          },
+          {
+            id: 47,
+            category: "リスク管理とその他",
+            q: "「インフルエンザ脳症」のリスクが最も高い年齢層は？",
+            options: ["5歳以下の小児", "20代の若者", "40代の働き盛り", "80歳以上の高齢者"],
+            correct: 0,
+            explanation: "インフルエンザ脳症は主に5歳以下の小児に見られる重篤な合併症で、意識障害やけいれん等を伴います。"
+          },
+          {
+            id: 48,
+            category: "リスク管理とその他",
+            q: "高齢者がインフルエンザにかかった際、特に注意すべき合併症は？",
+            options: ["中耳炎", "肺炎", "結膜炎", "筋肉痛"],
+            correct: 1,
+            explanation: "高齢者は肺炎を併発して重症化するリスクが高いため、早期発見と治療が重要です。"
+          },
+          {
+            id: 49,
+            category: "リスク管理とその他",
+            q: "妊娠中にインフルエンザにかかった場合、薬の使用はどうすべきですか？",
+            options: ["胎児への影響を考えて薬は一切使わない", "自然治癒を待つのが最善", "重症化リスクが高いため、発症早期の抗インフルエンザ薬（タミフル等）使用が推奨される", "解熱剤だけで様子を見る"],
+            correct: 2,
+            explanation: "妊娠中は重症化リスクが高いため、日本や海外のガイドラインでは発症早期の抗インフルエンザ薬（特にタミフル）の使用が推奨されています。"
+          },
+          {
+            id: 50,
+            category: "リスク管理とその他",
+            q: "インフルエンザ対策として「咳エチケット」に含まれない行動は？",
+            options: ["マスクを着用する", "咳やくしゃみをする際、ティッシュやハンカチで口・鼻を覆う", "とっさの時は袖や上着の内側で覆う", "手のひらで口を押さえ、そのままドアノブなどに触れる"],
+            correct: 3,
+            explanation: "手で押さえると手にウイルスが付着し、接触感染の原因となります。手で押さえた場合はすぐに洗う必要があり、袖で覆うことなどが推奨されます。"
+          }
+        ];
+
+        function InfluenzaApp() {
+          const [view, setView] = useState('welcome');
+          const [quizIndex, setQuizIndex] = useState(0);
+          const [score, setScore] = useState(0);
+          const [quizHistory, setQuizHistory] = useState([]);
+          const [selectedAnswer, setSelectedAnswer] = useState(null);
+          const [showExplanation, setShowExplanation] = useState(false);
+          const [activeFaqCategory, setActiveFaqCategory] = useState("流行状況・ウイルス");
+
+          const startQuiz = () => {
+            setQuizIndex(0);
+            setScore(0);
+            setQuizHistory([]);
+            setSelectedAnswer(null);
+            setShowExplanation(false);
+            setView('quiz');
+          };
+
+          const handleAnswer = (optionIndex) => {
+            if (selectedAnswer !== null) return;
+
+            setSelectedAnswer(optionIndex);
+            setShowExplanation(true);
+            
+            const isCorrect = optionIndex === QUIZ_DATA[quizIndex].correct;
+            if (isCorrect) setScore(s => s + 1);
+
+            setQuizHistory([...quizHistory, {
+              ...QUIZ_DATA[quizIndex],
+              userAnswer: optionIndex,
+              isCorrect
+            }]);
+          };
+
+          const nextQuestion = () => {
+            if (quizIndex < QUIZ_DATA.length - 1) {
+              setQuizIndex(i => i + 1);
+              setSelectedAnswer(null);
+              setShowExplanation(false);
+            } else {
+              setView('result');
+            }
+          };
+
+          const getRank = () => {
+            const percentage = (score / QUIZ_DATA.length) * 100;
+            if (percentage === 100) return { title: "Grand Master", color: "text-amber-500", desc: "完璧な知識です。感染対策の指導者レベルです。" };
+            if (percentage >= 90) return { title: "Expert", color: "text-indigo-600", desc: "素晴らしい知識です。周囲の手本となります。" };
+            if (percentage >= 80) return { title: "Professional", color: "text-blue-500", desc: "十分な知識があります。自信を持って対策しましょう。" };
+            if (percentage >= 60) return { title: "Associate", color: "text-teal-500", desc: "基本的な知識はあります。復習して完璧を目指しましょう。" };
+            return { title: "Novice", color: "text-gray-500", desc: "まずはFAQで基礎を学び直しましょう。" };
+          };
+
+          return (
+            <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-indigo-100">
+              <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+                <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+                  <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setView('welcome')}>
+                    <div className="w-8 h-8 bg-indigo-900 rounded-lg flex items-center justify-center text-amber-400">
+                      <BookOpen size={20} strokeWidth={2.5} />
+                    </div>
+                    <span className="font-serif font-bold text-xl text-indigo-900 tracking-tight">
+                      Influenza Master <span className="text-amber-600 font-light">2025/26</span>
+                    </span>
+                  </div>
+                  
+                  <nav className="hidden md:flex space-x-6 text-sm font-medium">
+                    <button 
+                      onClick={() => setView('faq')}
+                      className={`transition-colors ${view === 'faq' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-900'}`}
+                    >
+                      Knowledge Base
+                    </button>
+                    <button 
+                      onClick={startQuiz}
+                      className={`transition-colors ${view === 'quiz' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-900'}`}
+                    >
+                      e-Learning
+                    </button>
+                  </nav>
+                </div>
+              </header>
+
+              <main className="max-w-4xl mx-auto px-4 py-8">
+                {view === 'welcome' && (
+                  <div className="space-y-12 animate-in fade-in duration-500">
+                    <div className="text-center py-12 px-4 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden relative">
+                      <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-900 via-amber-500 to-indigo-900"></div>
+                      
+                      <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-800 text-xs font-semibold tracking-wider uppercase mb-6">
+                        2025/26 Season Updated
+                      </div>
+                      
+                      <h1 className="text-4xl md:text-5xl font-serif font-bold text-slate-900 mb-6 leading-tight">
+                        インフルエンザ対策の<br/>
+                        <span className="text-indigo-900">正しい知識</span>を、<span className="text-amber-600">美しく</span>学ぶ。
+                      </h1>
+                      <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
+                        今シーズンの流行特徴から、最新のワクチン事情、現場で役立つ対応策まで。<br/>
+                        全50問のFAQとe-Learningで、プロフェッショナルとしての知識を深めましょう。
+                      </p>
+                      
+                      <div className="flex flex-col sm:flex-row justify-center gap-4">
+                        <button 
+                          onClick={() => setView('faq')}
+                          className="px-8 py-4 bg-white border-2 border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 hover:border-indigo-200 transition-all flex items-center justify-center gap-2 group"
+                        >
+                          <BookOpen size={20} className="group-hover:text-indigo-600 transition-colors" />
+                          基礎知識を学ぶ (FAQ)
+                        </button>
+                        <button 
+                          onClick={startQuiz}
+                          className="px-8 py-4 bg-indigo-900 text-white font-semibold rounded-xl hover:bg-indigo-800 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2"
+                        >
+                          知識をテストする (Start Quiz)
+                          <ArrowRight size={20} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-6">
+                      {[
+                        { icon: <HelpCircle className="text-indigo-500" />, title: "網羅的なFAQ", desc: "流行状況から治療薬まで、50の質問で徹底解説。" },
+                        { icon: <CheckCircle className="text-amber-500" />, title: "実践的e-Learning", desc: "消防・医療現場で役立つ判断力を養う50問のクイズ。" },
+                        { icon: <Trophy className="text-indigo-900" />, title: "マスタリーランク", desc: "正解率に応じてランクを付与。最高ランクを目指そう。" },
+                      ].map((feature, i) => (
+                        <div key={i} className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                          <div className="mb-4 bg-slate-50 w-12 h-12 rounded-lg flex items-center justify-center">
+                            {feature.icon}
+                          </div>
+                          <h3 className="font-bold text-slate-900 mb-2">{feature.title}</h3>
+                          <p className="text-sm text-slate-600">{feature.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {view === 'faq' && (
+                  <div className="animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex flex-col md:flex-row gap-6">
+                      <div className="w-full md:w-64 flex-shrink-0">
+                        <div className="sticky top-24 bg-white rounded-xl shadow-sm border border-slate-100 p-2">
+                          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3 py-2 mb-2">Categories</h2>
+                          <div className="space-y-1">
+                            {FAQ_DATA.map((cat) => (
+                              <button
+                                key={cat.category}
+                                onClick={() => setActiveFaqCategory(cat.category)}
+                                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                                  activeFaqCategory === cat.category 
+                                    ? "bg-indigo-50 text-indigo-900" 
+                                    : "text-slate-600 hover:bg-slate-50"
+                                }`}
+                              >
+                                {cat.category}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="mt-6 pt-6 border-t border-slate-100 px-3">
+                            <button 
+                              onClick={startQuiz}
+                              className="w-full py-2.5 bg-indigo-900 text-white text-sm font-semibold rounded-lg hover:bg-indigo-800 transition-colors flex items-center justify-center gap-2"
+                            >
+                              e-Learningへ進む
+                              <ArrowRight size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 space-y-6">
+                        <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                          <h2 className="text-2xl font-serif font-bold text-indigo-900 mb-6 pb-4 border-b border-slate-100">
+                            {activeFaqCategory}
+                          </h2>
+                          <div className="space-y-6">
+                            {FAQ_DATA.find(cat => cat.category === activeFaqCategory)?.questions.map((item, index) => (
+                              <FAQItem key={index} q={item.q} a={item.a} index={index} />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {view === 'quiz' && (
+                  <div className="max-w-2xl mx-auto animate-in slide-in-from-right-8 duration-300">
+                    <div className="mb-8">
+                      <div className="flex justify-between text-xs font-medium text-slate-500 mb-2">
+                        <span>Question {quizIndex + 1} / {QUIZ_DATA.length}</span>
+                        <span>{Math.round(((quizIndex + 1) / QUIZ_DATA.length) * 100)}% Completed</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-indigo-500 to-amber-500 transition-all duration-500 ease-out"
+                          style={{ width: `${((quizIndex + 1) / QUIZ_DATA.length) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+                      <div className="bg-indigo-900 px-6 py-4 flex items-center justify-between">
+                        <span className="text-indigo-200 text-xs font-bold tracking-wider uppercase">
+                          {QUIZ_DATA[quizIndex].category}
+                        </span>
+                        <span className="text-white text-sm font-serif italic">Q.{quizIndex + 1}</span>
+                      </div>
+                      
+                      <div className="p-8">
+                        <h3 className="text-xl font-bold text-slate-900 leading-relaxed mb-8">
+                          {QUIZ_DATA[quizIndex].q}
+                        </h3>
+
+                        <div className="space-y-3">
+                          {QUIZ_DATA[quizIndex].options.map((option, idx) => {
+                            let btnClass = "w-full text-left p-4 rounded-xl border-2 transition-all duration-200 flex items-center justify-between group ";
+                            
+                            if (selectedAnswer === null) {
+                              btnClass += "border-slate-100 hover:border-indigo-200 hover:bg-slate-50 text-slate-700";
+                            } else if (idx === QUIZ_DATA[quizIndex].correct) {
+                              btnClass += "border-green-500 bg-green-50 text-green-900 font-medium";
+                            } else if (idx === selectedAnswer && idx !== QUIZ_DATA[quizIndex].correct) {
+                              btnClass += "border-red-500 bg-red-50 text-red-900";
+                            } else {
+                              btnClass += "border-slate-100 opacity-50";
+                            }
+
+                            return (
+                              <button 
+                                key={idx}
+                                onClick={() => handleAnswer(idx)}
+                                disabled={selectedAnswer !== null}
+                                className={btnClass}
+                              >
+                                <span className="flex-1">{option}</span>
+                                {selectedAnswer !== null && idx === QUIZ_DATA[quizIndex].correct && <CheckCircle className="text-green-600 flex-shrink-0 ml-2" />}
+                                {selectedAnswer === idx && idx !== QUIZ_DATA[quizIndex].correct && <XCircle className="text-red-600 flex-shrink-0 ml-2" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {showExplanation && (
+                          <div className="mt-8 bg-slate-50 rounded-xl p-6 border border-slate-200 animate-in fade-in slide-in-from-top-2">
+                            <div className="flex items-start gap-3">
+                              <div className="bg-indigo-100 p-2 rounded-lg text-indigo-900 mt-1">
+                                <BookOpen size={18} />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-indigo-900 mb-2">解説</h4>
+                                <p className="text-slate-700 text-sm leading-relaxed">
+                                  {QUIZ_DATA[quizIndex].explanation}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-6 flex justify-end">
+                              <button 
+                                onClick={nextQuestion}
+                                className="px-6 py-2 bg-indigo-900 text-white text-sm font-semibold rounded-lg hover:bg-indigo-800 transition-colors flex items-center gap-2"
+                              >
+                                {quizIndex === QUIZ_DATA.length - 1 ? "結果を見る" : "次の問題へ"}
+                                <ArrowRight size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {view === 'result' && (
+                  <div className="animate-in zoom-in-95 duration-500">
+                    <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100 text-center relative">
+                      <div className="absolute top-0 w-full h-32 bg-gradient-to-b from-indigo-900 to-indigo-800"></div>
+                      
+                      <div className="relative pt-12 px-8 pb-12">
+                        <div className="w-24 h-24 bg-white rounded-full mx-auto shadow-xl flex items-center justify-center mb-6 text-amber-500 relative z-10 ring-4 ring-indigo-50">
+                           <Trophy size={48} fill="currentColor" className="drop-shadow-sm" />
+                        </div>
+
+                        <h2 className="text-sm font-bold text-indigo-300 uppercase tracking-widest mb-2">Completion Result</h2>
+                        <div className="text-5xl font-serif font-bold text-slate-900 mb-2">
+                          {score} <span className="text-xl text-slate-400 font-sans font-normal">/ {QUIZ_DATA.length}</span>
+                        </div>
+                        
+                        <div className="mb-8">
+                          <span className={`text-2xl font-bold ${getRank().color}`}>
+                            {getRank().title}
+                          </span>
+                          <p className="text-slate-600 mt-2 text-sm max-w-sm mx-auto">
+                            {getRank().desc}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto mb-10">
+                          <div className="bg-slate-50 p-4 rounded-xl">
+                            <div className="text-2xl font-bold text-green-600">{score}</div>
+                            <div className="text-xs text-slate-500">Correct</div>
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-xl">
+                            <div className="text-2xl font-bold text-red-500">{QUIZ_DATA.length - score}</div>
+                            <div className="text-xs text-slate-500">Incorrect</div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row justify-center gap-4">
+                           <button 
+                            onClick={() => setView('welcome')}
+                            className="px-6 py-3 bg-white border border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                          >
+                            ホームに戻る
+                          </button>
+                          <button 
+                            onClick={startQuiz}
+                            className="px-6 py-3 bg-indigo-900 text-white font-semibold rounded-xl hover:bg-indigo-800 shadow-lg shadow-indigo-200 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <RefreshCcw size={18} />
+                            もう一度挑戦する
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-8 border-t border-slate-200 text-left">
+                        <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                          <Award className="text-amber-500" />
+                          Review Highlights
+                        </h3>
+                        <div className="space-y-4">
+                          {quizHistory.filter(h => !h.isCorrect).length > 0 ? (
+                            quizHistory.filter(h => !h.isCorrect).map((h, i) => (
+                              <div key={i} className="bg-white p-4 rounded-lg border border-slate-200 text-sm">
+                                 <div className="flex items-start gap-2 mb-2">
+                                    <XCircle size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+                                    <p className="font-medium text-slate-900">{h.q}</p>
+                                 </div>
+                                 <div className="pl-6 text-slate-600 space-y-1">
+                                    <p className="text-xs">あなたの回答: <span className="text-red-500 line-through">{h.options[h.userAnswer]}</span></p>
+                                    <p className="text-xs font-bold text-green-700">正解: {h.options[h.correct]}</p>
+                                    <p className="mt-2 text-xs bg-slate-100 p-2 rounded text-slate-600">{h.explanation}</p>
+                                 </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-8 text-slate-500">
+                              <Star className="w-12 h-12 text-amber-300 mx-auto mb-2" />
+                              <p>全問正解です！復習項目はありません。</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </main>
+
+              <footer className="max-w-4xl mx-auto px-4 py-8 text-center text-slate-400 text-sm font-light">
+                © 2025/26 Influenza Education Program.
+              </footer>
+            </div>
+          );
+        }
+
+        function FAQItem({ q, a, index }) {
+          const [isOpen, setIsOpen] = useState(false);
+
+          return (
+            <div className="border border-slate-100 rounded-xl overflow-hidden transition-all duration-200 hover:shadow-md bg-white">
+              <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full text-left p-5 flex items-start justify-between gap-4 bg-white"
+              >
+                <div className="flex gap-4">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 font-serif font-bold flex items-center justify-center text-sm">
+                    Q
+                  </span>
+                  <span className="font-semibold text-slate-800 leading-relaxed">{q}</span>
+                </div>
+                {isOpen ? <ChevronUp className="text-slate-400 flex-shrink-0" /> : <ChevronDown className="text-slate-400 flex-shrink-0" />}
+              </button>
+              
+              {isOpen && (
+                <div className="px-5 pb-5 pl-14 animate-in slide-in-from-top-2">
+                  <div className="text-slate-600 text-sm leading-relaxed border-t border-slate-100 pt-3">
+                     <span className="font-bold text-amber-600 mr-2">A.</span>
+                     {a}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<InfluenzaApp />);
+    </script>
+</body>
+</html>
