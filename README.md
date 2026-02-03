@@ -115,7 +115,7 @@
     </div>
     <div class="card">
       <div class="lesson-title">Lesson 6</div>
-      <div class="lesson-desc">火災調査と関係法令</div>
+      <div class="lesson-desc">インフルエンザ</div>
       <a href="lesson6/index.html" class="button">▶ 学習する</a>
     </div>
     <div class="card">
