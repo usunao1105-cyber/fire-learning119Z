@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公務員コンプライアンス・マスター</title>
+    <meta name="description" content="公職選挙法・地方公務員法を楽しく学べるクイズアプリ">
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans JP', sans-serif; background-color: #f0f4f8; }
+        .card-enter { animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // アイコンコンポーネント (エラー回避のためSVGを直接定義)
+        const Icon = ({ name, size = 24, className, strokeWidth = 2 }) => {
+            const icons = {
+                Scale: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>
+                    </svg>
+                ),
+                Play: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                ),
+                RotateCcw: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12" /><path d="M3 3v9h9" />
+                    </svg>
+                ),
+                X: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                    </svg>
+                ),
+                Circle: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <circle cx="12" cy="12" r="10" />
+                    </svg>
+                ),
+                HelpCircle: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" />
+                    </svg>
+                ),
+                ArrowRight: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+                    </svg>
+                )
+            };
+            return icons[name] || null;
+        };
+
+        // --- データセット (50問) ---
+        const rawData = [
+            // 1. 基本ルール・法令
+            { id: 1, category: "基本ルール", type: "text", q: "公務員の政治活動はなぜ制限されているのですか？", a: "公務員は「全体の奉仕者」であり、一部の奉仕者ではないため、行政の中立的運営を確保し、それに対する国民・住民の信頼を維持する必要があるからです。" },
+            { id: 2, category: "基本ルール", type: "text", q: "どのような法律で規制されていますか？", a: "主に「公職選挙法」、「国家公務員法（及び人事院規則）」、「地方公務員法」、「教育公務員特例法」によって規制されています。" },
+            { id: 3, category: "基本ルール", type: "boolean", answerBool: true, q: "国家公務員と地方公務員で制限に違いはありますか？", a: "はい。国家公務員は原則として勤務時間外や区域外であっても政治的行為が広く制限されますが、地方公務員は当該自治体の区域外であれば一部の行為が可能な場合があります。ただし「地位利用」は全員禁止です。" },
+            { id: 4, category: "基本ルール", type: "boolean", answerBool: true, q: "特別職の公務員も制限の対象ですか？", a: "はい。公職選挙法における「地位利用による選挙運動の禁止」は、特別職を含むすべての公務員（非常勤含む）に適用されます。" },
+            { id: 5, category: "基本ルール", type: "boolean", answerBool: true, q: "選挙管理委員会の職員や警察官などは特別な制限がありますか？", a: "はい。選管委員・職員、裁判官、警察官などは「特定公務員」として、地位利用の有無にかかわらず、在職中は一切の選挙運動が禁止されています。" },
+            
+            // 2. 「地位利用」による選挙運動
+            { id: 6, category: "地位利用", type: "text", q: "「公務員等の地位利用」とは具体的にどういうことですか？", a: "職務上の指揮命令権、人事権、予算権などの影響力を利用して部下に働きかけたり、許認可権限などを利用して関係業者に働きかけることなどを指します。" },
+            { id: 7, category: "地位利用", type: "boolean", answerBool: false, q: "地位を利用して部下に投票を依頼することは許されますか？", a: "いいえ。職務上の指揮命令権や人事権に基づく影響力を利用して部下に投票を勧誘することは、地位利用による選挙運動として禁止されています。" },
+            { id: 8, category: "地位利用", type: "boolean", answerBool: false, q: "「後援会協力者カード」の取りまとめを部下に依頼するのは違法ですか？", a: "状況によりますが、上司が部下に対して行い、選挙での投票依頼の意図が含まれる場合、実質的な選挙運動とみなされ違法となる可能性が高いです。" },
+            { id: 9, category: "地位利用", type: "text", q: "「地位利用」とみなされる行為にはどのようなものがありますか？", a: "候補者の推薦に関与すること、演説会の開催など選挙運動の企画に関与すること、後援団体の結成や勧誘に関与すること、文書図画を掲示・配布することなどが「みなす規定」により禁止されています。" },
+            { id: 10, category: "地位利用", type: "boolean", answerBool: false, q: "勤務時間外なら地位を利用しても良いですか？", a: "いいえ。公職選挙法上の地位利用の禁止は、勤務時間の内外を問いません。" },
+            { id: 11, category: "地位利用", type: "boolean", answerBool: false, q: "窓口業務のついでに住民に投票をお願いしても良いですか？", a: "いいえ。窓口や訪問調査の機会を利用して住民に働きかけることは、典型的な地位利用による選挙運動であり禁止されています。" },
+            { id: 12, category: "地位利用", type: "text", q: "地位利用違反の罰則は何ですか？", a: "2年以下の禁錮又は30万円以下の罰金に処されます。" },
+
+            // 3. 「政治的行為」の制限
+            { id: 13, category: "政治的行為", type: "text", q: "「政治的行為」とは具体的に何を指しますか？", a: "寄付を求めること、署名運動を企画・主宰すること、デモ行進を組織・指導すること、特定の政党等の機関紙を発行・配布することなどが定義されています。" },
+            { id: 14, category: "政治的行為", type: "text", q: "公務員が政党に加入することはできますか？", a: "単に党員になることは禁止されていませんが、政党の結成に関与したり、役員に就任することは禁止されています。" },
+            { id: 15, category: "政治的行為", type: "boolean", answerBool: false, q: "勤務時間中に政治的なバッジや服飾を身につけても良いですか？", a: "いいえ。政治的目的を持って、勤務時間中に政治的スローガン等の入った服飾（リボンやバッジ等）を着用することは禁止されています。" },
+            { id: 16, category: "政治的行為", type: "text", q: "自分の休み時間にデモに参加することはできますか？", a: "国家公務員は広く制限されますが、単なる参加は行為態様によります。ただし政治的中立性を損なうおそれがある行為は慎むべきです。" },
+            { id: 17, category: "政治的行為", type: "boolean", answerBool: false, q: "政治的な署名運動を行うことはできますか？", a: "署名運動を「企画・主宰」することは禁止されています。地方公務員の場合、区域外であれば可能な場合があります。" },
+            { id: 18, category: "政治的行為", type: "boolean", answerBool: false, q: "政治資金のカンパを募ることはできますか？", a: "政治的目的をもって寄付金等の募集に関与することは禁止されています。" },
+
+            // 4. 教育公務員
+            { id: 19, category: "教育公務員", type: "boolean", answerBool: false, q: "教師が授業で特定の候補者を支持する話をしても良いですか？", a: "いいえ。学校における児童・生徒への指導の際に、自分の支持する政党や候補者の名を挙げることは法令違反となるおそれがあります。" },
+            { id: 20, category: "教育公務員", type: "boolean", answerBool: false, q: "家庭訪問の際に保護者に投票をお願いできますか？", a: "いいえ。家庭訪問の機会を利用して投票を勧誘することは禁止されています。" },
+            { id: 21, category: "教育公務員", type: "boolean", answerBool: false, q: "PTAの会合で特定候補の推薦を決めても良いですか？", a: "いいえ。PTA等の会合の席で特定の候補者の推薦を決定させたり、投票を依頼することは違反行為とされています。" },
+            { id: 22, category: "教育公務員", type: "boolean", answerBool: false, q: "教員が選挙カーに乗って応援演説をすることはできますか？", a: "いいえ。教員としての地位を利用して選挙運動員として活動することは禁止されています。" },
+            { id: 23, category: "教育公務員", type: "boolean", answerBool: false, q: "生徒に選挙ポスターを貼らせることはできますか？", a: "いいえ。受持ちの児童生徒にポスターを貼らせたり、保護者宛の文書を持ち帰らせることは禁止されています。" },
+            { id: 24, category: "教育公務員", type: "boolean", answerBool: false, q: "学校の印刷機や電話を選挙活動に使っても良いですか？", a: "いいえ。勤務時間の内外を問わず、学校の設備（電話、パソコン、コピー機等）を選挙運動等のために用いることは禁止されています。" },
+
+            // 5. インターネット・SNS
+            { id: 25, category: "ネット・SNS", type: "text", q: "公務員がSNSで特定の候補者を応援することはできますか？", a: "公選法上は解禁されましたが、公務員法上の「政治的行為」や「地位利用」に該当する場合は依然として禁止されています。" },
+            { id: 26, category: "ネット・SNS", type: "boolean", answerBool: false, q: "LINEで部下に候補者の情報を送ることは問題ですか？", a: "はい、問題です。上司が部下に対し特定の候補者の画像などを送って投票を呼びかける行為は、地位利用等となり処分の対象となります。" },
+            { id: 27, category: "ネット・SNS", type: "text", q: "SNSで「落選運動」を行うことはできますか？", a: "ウェブサイト等を利用した落選運動には規制（メアド表示義務等）があり、さらに公務員としての政治的行為の制限にも留意が必要です。" },
+            { id: 28, category: "ネット・SNS", type: "boolean", answerBool: false, q: "勤務時間中に職場のパソコンで選挙情報を見ても良いですか？", a: "職務に関連しない不適正な目的で使用し、公務に支障を生じさせた場合、処分の対象となり得ます。" },
+
+            // 6. 事例
+            { id: 29, category: "事例", type: "text", q: "「佐伯市職員公職選挙法違反事件」とはどのような事件ですか？", a: "副市長らが市長選での現職当選を目的に、管理職に対し「後援会協力者カード」の取りまとめを依頼し、部下にカードを配布させた事件です。" },
+            { id: 30, category: "事例", type: "text", q: "佐伯市の事件で、管理職が従った理由は何でしたか？", a: "「人事や業務に影響があると思った」「人間関係が壊れるから」といった理由や、労働組合活動の名残で抵抗感が薄かったことなどが挙げられています。" },
+            { id: 31, category: "事例", type: "text", q: "「玉名市」の事例では何が問題になりましたか？", a: "部長職の職員が、後輩職員21人にLINEで候補者の名刺画像などを送り投票を依頼した行為が地方公務員法違反とされ、停職1か月の処分を受けました。" },
+            { id: 32, category: "事例", type: "text", q: "「堀越事件」とは何ですか？", a: "社会保険事務所の職員が、勤務時間外に休日に政党機関紙を配布した行為が国家公務員法違反に問われた事件です。" },
+            { id: 33, category: "事例", type: "text", q: "堀越事件の最高裁判決のポイントは何ですか？", a: "管理職的地位になく、職務権限に裁量のない公務員が、職務と無関係に行った行為等は「政治的中立性を損なうおそれが実質的に認められない」として処罰対象にならないとされました。" },
+            { id: 34, category: "事例", type: "boolean", answerBool: false, q: "堀越事件の判決により、すべてのビラ配布が認められたのですか？", a: "いいえ。あくまで「政治的中立性を損なう現実的なおそれ」がないと認められる限定的なケースについての判断であり、管理職による行為等は依然として処罰対象となり得ます。" },
+            { id: 35, category: "事例", type: "boolean", answerBool: false, q: "佐伯市の事例で、市長の関与は認められましたか？", a: "調査委員会の報告では、市長や後援会による指示や関与をうかがわせる事実は認められなかったとされています。" },
+
+            // 7. 罰則・懲戒処分
+            { id: 36, category: "罰則・処分", type: "text", q: "公職選挙法違反で有罪になるとどうなりますか？", a: "禁錮刑以上の刑に処せられた場合、執行猶予中であっても選挙権・被選挙権が停止（公民権停止）され、公職を失う（失職する）ことになります。" },
+            { id: 37, category: "罰則・処分", type: "text", q: "地位利用による選挙運動を行った場合の懲戒処分は？", a: "公務員の地位を利用して選挙運動をした場合、免職または停職が標準的な処分とされています。" },
+            { id: 38, category: "罰則・処分", type: "text", q: "政治的行為の制限に違反した場合の処分は？", a: "減給または戒告が標準とされていますが、行為の態様によってはより重い処分もあり得ます。" },
+            { id: 39, category: "罰則・処分", type: "text", q: "佐伯市の事件に関与した職員はどのような処分を受けましたか？", a: "教育長が「けん責」、部長級職員が「訓告」、その他の管理職が「厳重注意」などの処分を受けました。" },
+            { id: 40, category: "罰則・処分", type: "text", q: "飲酒運転と選挙違反、どちらが処分が重いですか？", a: "兵庫県の指針では、酒酔い運転は「免職」、地位利用による選挙運動も「免職又は停職」となっており、いずれも極めて重い処分が規定されています。" },
+            { id: 41, category: "罰則・処分", type: "text", q: "公民権停止の期間はどれくらいですか？", a: "実刑期間中および終了後5年間（または10年間）選挙権・被選挙権が停止されます。執行猶予の場合は、その期間中停止されます。" },
+            { id: 42, category: "罰則・処分", type: "text", q: "「事前運動」とは何ですか？またその罰則は？", a: "選挙の公示・告示日前に選挙運動を行うことです。1年以下の禁錮又は30万円以下の罰金に処されます。" },
+
+            // 8. 内部通報・コンプライアンス
+            { id: 43, category: "内部通報", type: "text", q: "上司から違法な選挙運動を強要されたらどうすべきですか？", a: "応じなかったことで不利益な扱いを受けることはないと法律で保障されています。内部通報窓口等への相談が推奨されます。" },
+            { id: 44, category: "内部通報", type: "boolean", answerBool: false, q: "公務員が内部告発をすることは守秘義務違反になりますか？", a: "いいえ。法令違反行為などの公益通報は秘密として保護されず、公務員には告発義務もあるため、守秘義務違反にはなりません。" },
+            { id: 45, category: "内部通報", type: "boolean", answerBool: true, q: "外部の機関に通報しても良いですか？", a: "はい。通報対象事実が生じている場合、権限を有する行政機関や外部の通報先へ通報することが可能です。" },
+            { id: 46, category: "内部通報", type: "boolean", answerBool: false, q: "通報したことで不利益な扱いを受けませんか？", a: "公益通報者保護法等により、通報をしたことを理由とする不利益な取扱いは禁止されています。" },
+            { id: 47, category: "内部通報", type: "boolean", answerBool: false, q: "「後援会協力者カード」は職場に持ち込んで良いですか？", a: "佐伯市の再発防止策では持ち込みを禁止しています。誤解を招く物品の持ち込みは避けるべきです。" },
+            { id: 48, category: "内部通報", type: "boolean", answerBool: false, q: "過去の労働組合活動の感覚で選挙活動をしても良いですか？", a: "いいえ。管理職などが組合活動の延長で政治活動を行うことは、法令遵守の観点から問題となることが多く、意識改革が必要です。" },
+            { id: 49, category: "内部通報", type: "boolean", answerBool: true, q: "選挙に関する相談窓口はありますか？", a: "はい、自治体によっては選挙管理委員会等に相談窓口を設置している場合があります。" },
+            { id: 50, category: "内部通報", type: "boolean", answerBool: false, q: "職場での政治的な話題はすべて禁止ですか？", a: "単なる話題程度であれば直ちに違反とはなりませんが、特定の政党・候補者の支持を求めたり、職場の秩序を乱すような言動は慎むべきです。" }
+        ];
+
+        // --- メインアプリコンポーネント ---
+        const App = () => {
+            const [gameState, setGameState] = useState('menu'); // menu, playing, result
+            const [questions, setQuestions] = useState([]);
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [score, setScore] = useState(0);
+            const [showAnswer, setShowAnswer] = useState(false);
+            const [selectedCategory, setSelectedCategory] = useState(null);
+            const [feedback, setFeedback] = useState(null); // 'correct', 'incorrect'
+
+            // カテゴリ抽出
+            const categories = useMemo(() => {
+                return [...new Set(rawData.map(item => item.category))];
+            }, []);
+
+            // ゲーム開始
+            const startGame = (category = null) => {
+                let filtered = category ? rawData.filter(q => q.category === category) : [...rawData];
+                
+                // シャッフル
+                for (let i = filtered.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
+                }
+
+                setQuestions(filtered);
+                setCurrentIndex(0);
+                setScore(0);
+                setShowAnswer(false);
+                setFeedback(null);
+                setGameState('playing');
+            };
+
+            // 回答処理 (〇✕クイズ用)
+            const handleBooleanAnswer = (userChoice) => {
+                const currentQ = questions[currentIndex];
+                const isCorrect = userChoice === currentQ.answerBool;
+                
+                setShowAnswer(true);
+                setFeedback(isCorrect ? 'correct' : 'incorrect');
+                if (isCorrect) setScore(s => s + 1);
+            };
+
+            // 回答処理 (テキスト記述用 - 自己採点)
+            const handleSelfGrade = (isCorrect) => {
+                if (isCorrect) setScore(s => s + 1);
+                nextQuestion();
+            };
+
+            // 次の問題へ
+            const nextQuestion = () => {
+                if (currentIndex < questions.length - 1) {
+                    setCurrentIndex(c => c + 1);
+                    setShowAnswer(false);
+                    setFeedback(null);
+                } else {
+                    setGameState('result');
+                }
+            };
+
+            // ランク判定
+            const getRank = () => {
+                const percentage = (score / questions.length) * 100;
+                if (percentage === 100) return { title: "コンプライアンス・マスター", color: "text-yellow-600", desc: "完璧です！法令遵守の模範です。" };
+                if (percentage >= 80) return { title: "エキスパート公務員", color: "text-blue-600", desc: "素晴らしい知識です。実践で活かしましょう。" };
+                if (percentage >= 60) return { title: "中堅職員", color: "text-green-600", desc: "合格ラインです。細かい規定も確認しましょう。" };
+                if (percentage >= 40) return { title: "新人職員", color: "text-orange-500", desc: "基礎はOK。もう少し学習が必要です。" };
+                return { title: "見習い中", color: "text-gray-500", desc: "まずは基本ルールを復習しましょう！" };
+            };
+
+            // --- 画面レンダリング ---
+
+            // 1. メニュー画面
+            if (gameState === 'menu') {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-4 max-w-md mx-auto">
+                        <div className="bg-white rounded-2xl shadow-xl p-8 w-full text-center">
+                            <div className="mb-6 flex justify-center text-blue-600">
+                                <Icon name="Scale" size={64} />
+                            </div>
+                            <h1 className="text-2xl font-bold text-gray-800 mb-2">公務員コンプライアンス<br/>マスター</h1>
+                            <p className="text-gray-500 mb-8 text-sm">公職選挙法・地方公務員法を<br/>クイズで楽しく学びましょう</p>
+
+                            <button 
+                                onClick={() => startGame()}
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl mb-4 transition shadow-lg flex items-center justify-center gap-2"
+                            >
+                                <Icon name="Play" size={20} />
+                                全50問 チャレンジ
+                            </button>
+
+                            <div className="text-left mt-6">
+                                <h3 className="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">カテゴリ別学習</h3>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {categories.map(cat => (
+                                        <button 
+                                            key={cat}
+                                            onClick={() => startGame(cat)}
+                                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-2 rounded-lg text-xs font-semibold transition"
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <footer className="mt-8 text-xs text-gray-400 text-center">
+                            出典：提供されたFAQデータに基づく<br/>
+                            ※学習用アプリです。正確な法的判断は条文を参照してください。
+                        </footer>
+                    </div>
+                );
+            }
+
+            // 2. 結果画面
+            if (gameState === 'result') {
+                const rank = getRank();
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-4 max-w-md mx-auto card-enter">
+                        <div className="bg-white rounded-2xl shadow-xl p-8 w-full text-center relative overflow-hidden">
+                            {score === questions.length && (
+                                <div className="absolute top-0 left-0 w-full h-2 bg-yellow-400"></div>
+                            )}
+                            
+                            <h2 className="text-gray-500 font-bold mb-2">結果発表</h2>
+                            <div className="text-5xl font-black text-gray-800 mb-2">
+                                {score} <span className="text-xl font-normal text-gray-400">/ {questions.length}</span>
+                            </div>
+
+                            <div className="my-6 p-4 bg-gray-50 rounded-xl">
+                                <div className="text-sm text-gray-400 mb-1">あなたのランク</div>
+                                <div className={`text-2xl font-bold ${rank.color}`}>{rank.title}</div>
+                                <div className="text-xs text-gray-500 mt-2">{rank.desc}</div>
+                            </div>
+
+                            <button 
+                                onClick={() => setGameState('menu')}
+                                className="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-xl transition flex items-center justify-center gap-2"
+                            >
+                                <Icon name="RotateCcw" size={18} />
+                                タイトルに戻る
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 3. プレイ画面
+            const currentQ = questions[currentIndex];
+            const isBooleanType = currentQ.type === 'boolean';
+
+            return (
+                <div className="min-h-screen flex flex-col p-4 max-w-md mx-auto">
+                    {/* Header / Progress */}
+                    <div className="flex justify-between items-center mb-4">
+                        <button onClick={() => setGameState('menu')} className="text-gray-400 hover:text-gray-600">
+                            <Icon name="X" size={24} />
+                        </button>
+                        <div className="flex-1 mx-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                                className="h-full bg-blue-500 transition-all duration-300"
+                                style={{ width: `${((currentIndex) / questions.length) * 100}%` }}
+                            ></div>
+                        </div>
+                        <span className="text-gray-500 font-mono font-bold">
+                            {currentIndex + 1}<span className="text-xs">/{questions.length}</span>
+                        </span>
+                    </div>
+
+                    {/* Question Card */}
+                    <div className="flex-1 flex flex-col relative">
+                        <div className="bg-white rounded-2xl shadow-lg p-6 mb-4 flex-1 flex flex-col card-enter">
+                            <div className="mb-4">
+                                <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold mb-2">
+                                    {currentQ.category}
+                                </span>
+                                {isBooleanType && (
+                                    <span className="ml-2 inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded font-bold mb-2">
+                                        〇✕クイズ
+                                    </span>
+                                )}
+                            </div>
+                            
+                            <h2 className="text-xl font-bold text-gray-800 mb-6 leading-relaxed">
+                                {currentQ.q}
+                            </h2>
+
+                            {/* 〇✕クイズのフィードバック表示 */}
+                            {feedback && isBooleanType && (
+                                <div className={`absolute top-1/4 left-0 right-0 flex justify-center items-center pointer-events-none z-10 ${feedback === 'incorrect' ? 'shake' : ''}`}>
+                                    {feedback === 'correct' ? (
+                                        <div className="bg-white/90 rounded-full p-4 shadow-2xl border-4 border-green-500 text-green-500">
+                                            <Icon name="Circle" size={80} strokeWidth={3} />
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white/90 rounded-full p-4 shadow-2xl border-4 border-red-500 text-red-500">
+                                            <Icon name="X" size={80} strokeWidth={3} />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Answer Area */}
+                            {showAnswer ? (
+                                <div className="mt-auto bg-slate-50 p-4 rounded-xl border border-slate-200 animate-fade-in">
+                                    <div className="text-sm font-bold text-slate-400 mb-1">正解・解説</div>
+                                    <p className="text-slate-800 leading-relaxed font-medium">
+                                        {currentQ.a}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="mt-auto flex justify-center items-center h-32 text-gray-300">
+                                    <Icon name="HelpCircle" size={48} />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Controls */}
+                        <div className="h-32 pb-4">
+                            {!showAnswer ? (
+                                isBooleanType ? (
+                                    <div className="grid grid-cols-2 gap-4 h-full">
+                                        <button 
+                                            onClick={() => handleBooleanAnswer(true)}
+                                            className="bg-white border-2 border-green-500 text-green-600 rounded-xl shadow-md hover:bg-green-50 active:scale-95 transition flex flex-col items-center justify-center gap-2"
+                                        >
+                                            <Icon name="Circle" size={40} />
+                                            <span className="font-bold">はい / 許可</span>
+                                        </button>
+                                        <button 
+                                            onClick={() => handleBooleanAnswer(false)}
+                                            className="bg-white border-2 border-red-500 text-red-600 rounded-xl shadow-md hover:bg-red-50 active:scale-95 transition flex flex-col items-center justify-center gap-2"
+                                        >
+                                            <Icon name="X" size={40} />
+                                            <span className="font-bold">いいえ / 禁止</span>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button 
+                                        onClick={() => setShowAnswer(true)}
+                                        className="w-full h-full bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 active:scale-95 transition font-bold text-lg"
+                                    >
+                                        答えを見る
+                                    </button>
+                                )
+                            ) : (
+                                isBooleanType ? (
+                                    <button 
+                                        onClick={nextQuestion}
+                                        className="w-full h-full bg-gray-800 text-white rounded-xl shadow-lg hover:bg-gray-700 active:scale-95 transition font-bold text-lg flex items-center justify-center gap-2"
+                                    >
+                                        次へ進む <Icon name="ArrowRight" size={20} />
+                                    </button>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-4 h-full">
+                                        <button 
+                                            onClick={() => handleSelfGrade(false)}
+                                            className="bg-gray-200 text-gray-600 rounded-xl shadow hover:bg-gray-300 active:scale-95 transition font-bold flex flex-col items-center justify-center"
+                                        >
+                                            <span className="text-xs mb-1">不安...</span>
+                                            復習する
+                                        </button>
+                                        <button 
+                                            onClick={() => handleSelfGrade(true)}
+                                            className="bg-blue-100 text-blue-700 rounded-xl shadow hover:bg-blue-200 active:scale-95 transition font-bold flex flex-col items-center justify-center"
+                                        >
+                                            <span className="text-xs mb-1">バッチリ！</span>
+                                            正解した
+                                        </button>
+                                    </div>
+                                )
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
