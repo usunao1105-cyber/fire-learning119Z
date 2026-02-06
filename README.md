@@ -125,7 +125,7 @@
     </div>
     <div class="card">
       <div class="lesson-title">Lesson 8</div>
-      <div class="lesson-desc">感染防止対策</div>
+      <div class="lesson-desc">安全管理マニュアル装備</div>
       <a href="lesson8/index.html" class="button">▶ 学習する</a>
     </div>
     <div class="card">
