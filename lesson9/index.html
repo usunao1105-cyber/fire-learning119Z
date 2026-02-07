@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, CheckCircle, XCircle, AlertTriangle, Shield, Award, RefreshCw, ChevronRight, Copy, FileText, RotateCcw } from 'lucide-react';
+import { BookOpen, CheckCircle, XCircle, AlertTriangle, Shield, Award, RefreshCw, ChevronRight, Copy, FileText, RotateCcw, Github } from 'lucide-react';
 
 // -----------------------------------------------------------------------------
 // クイズデータ (全50問 - 添付資料に基づく実例・判例・理論)
@@ -481,7 +481,25 @@ export default function SafetyTrainingApp() {
     copyContent(text, "テキストをコピーしました！");
   };
 
-  // HTML形式でコピー（GitHub/ブログ用）
+  // GitHub用 Markdown形式でコピー
+  const copyToClipboardMarkdown = () => {
+    const date = new Date().toLocaleDateString();
+    // GitHubのMarkdownではHTMLタグよりもMarkdown記法が安全
+    const markdown = `
+### 🚒 消防職員安全配慮義務・教養クイズ結果
+
+- **実施日:** ${date}
+- **スコア:** ${score} / ${quizList.length}
+- **判定:** ${score >= 40 ? "合格（優秀）" : score >= 30 ? "合格圏内" : "要復習"}
+
+> 安全配慮義務は、組織と自分自身を守るための必須教養です。
+> 判例が示す「予見可能性」と「結果回避義務」の考え方を現場で活かしましょう。
+`.trim();
+
+    copyContent(markdown, "Markdownをコピーしました！");
+  };
+
+  // HTML形式でコピー（ブログ用）
   const copyToClipboardHTML = () => {
     const date = new Date().toLocaleDateString();
     const html = `
@@ -508,8 +526,10 @@ export default function SafetyTrainingApp() {
     // iframe内での動作を考慮し、execCommandを使用
     const textarea = document.createElement('textarea');
     textarea.value = content;
+    // 画面外に配置するのではなく透明にして配置（一部ブラウザの最適化対策）
     textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
+    textarea.style.opacity = '0';
+    textarea.style.pointerEvents = 'none';
     document.body.appendChild(textarea);
     textarea.select();
     
@@ -558,18 +578,24 @@ export default function SafetyTrainingApp() {
           </div>
 
           {/* エクスポートボタン群 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
              <button 
               onClick={copyToClipboardText}
-              className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors border-2 border-slate-200"
+              className="px-2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors border-2 border-slate-200 text-sm"
             >
-              <FileText className="w-4 h-4" /> 結果をテキストでコピー
+              <FileText className="w-4 h-4" /> テキスト
             </button>
             <button 
               onClick={copyToClipboardHTML}
-              className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors border-2 border-slate-200"
+              className="px-2 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors border-2 border-slate-200 text-sm"
             >
-              <Copy className="w-4 h-4" /> 結果をHTMLでコピー
+              <Copy className="w-4 h-4" /> HTML
+            </button>
+            <button 
+              onClick={copyToClipboardMarkdown}
+              className="px-2 py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-colors border-2 border-slate-800 text-sm"
+            >
+              <Github className="w-4 h-4" /> GitHub用
             </button>
           </div>
           
