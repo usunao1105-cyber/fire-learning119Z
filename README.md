@@ -145,7 +145,7 @@
     </div>
     <div class="card">
       <div class="lesson-title">Lesson 12</div>
-      <div class="lesson-desc">無線通信障害対応</div>
+      <div class="lesson-desc">葵消防署管内建物火災</div>
       <a href="lesson12/index.html" class="button">▶ 学習する</a>
     </div>
     <div class="card">
