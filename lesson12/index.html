@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>静岡市葵消防署管内建物火災 検証・学習アプリ</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (JSX変換用) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // --- アイコンコンポーネント (Lucide Reactの代用としてSVGを定義) ---
+        const IconBase = ({ children, size = 24, className = "" }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width={size} 
+                height={size} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={className}
+            >
+                {children}
+            </svg>
+        );
+
+        const Clock = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconBase>;
+        const AlertTriangle = (props) => <IconBase {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>;
+        const BookOpen = (props) => <IconBase {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></IconBase>;
+        const Shield = (props) => <IconBase {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></IconBase>;
+        const ChevronRight = (props) => <IconBase {...props}><path d="m9 18 6-6-6-6"/></IconBase>;
+        const MapPin = (props) => <IconBase {...props}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></IconBase>;
+        const Activity = (props) => <IconBase {...props}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></IconBase>;
+        const Radio = (props) => <IconBase {...props}><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></IconBase>;
+        const AlertOctagon = (props) => <IconBase {...props}><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></IconBase>;
+        const UserCheck = (props) => <IconBase {...props}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></IconBase>;
+        const Menu = (props) => <IconBase {...props}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></IconBase>;
+        const X = (props) => <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 18 12"/></IconBase>;
+
+        // --- データ定義 (資料に基づくシナリオデータ) ---
+
+        const SCENARIO_DATA = [
+        {
+            id: 1,
+            time: "21:58",
+            phase: "覚知・出動",
+            title: "火災覚知・指令",
+            description: "静岡市葵区呉服町の3階建て雑居ビル飲食店より「店内から煙が出ている」との通報。炎は見えないが煙が充満している状況。",
+            commanderView: "繁華街の中心部であり、人命検索と延焼阻止が最優先。建物構造（鉄筋コンクリート・3階建て）とテナント情報の早期把握が必要。",
+            keyPoints: [
+            "通報内容：煙のみ確認、炎は見えず",
+            "避難状況：従業員・客は避難済みとの情報あり",
+            "到着前の心構え：排煙活動の必要性と熱気・濃煙への警戒"
+            ],
+            riskLevel: "中",
+            type: "info"
+        },
+        {
+            id: 2,
+            time: "22:05",
+            phase: "現着・部署",
+            title: "現場到着・状況確認",
+            description: "現場到着。3階部分から外部への噴煙を確認。逃げ遅れ情報の確認と進入経路の選定を開始。",
+            commanderView: "【思考の分岐点】3階への進入方法はどうするか？階段室は使用可能か？屋内進入のリスクとメリットの天秤。",
+            keyPoints: [
+            "3階窓および換気口からの濃煙噴出を確認",
+            "関係者より「逃げ遅れなし」の聴取（確証はないため検索は必要）",
+            "進入経路：屋内階段または梯子車（現場環境により制限あり）"
+            ],
+            riskLevel: "高",
+            type: "decision"
+        },
+        {
+            id: 3,
+            time: "22:50",
+            phase: "屋内進入",
+            title: "屋内検索・消火活動開始",
+            description: "駿河小隊3名が屋内階段を使用し3階へ進入開始。ホースラインを作成しつつ検索にあたる。",
+            commanderView: "【重要判断】視界不良（濃煙）の中での進入。命綱（検索ロープ）を使用するか、ホースをガイドにするか？",
+            analysis: "報告書による検証：当該隊はロープを使用せず、ホースラインを頼りに進入した。これが後の退室時の方向感覚喪失の一因となった可能性がある。",
+            keyPoints: [
+            "視界：ほぼゼロ（濃煙）",
+            "装備：空気呼吸器着装",
+            "資機材：検索用ロープの不使用（ホースのみ）",
+            "隊形：3名一組（隊長・1番員・2番員）"
+            ],
+            riskLevel: "極高",
+            type: "critical"
+        },
+        {
+            id: 4,
+            time: "23:00",
+            phase: "活動中",
+            title: "退室命令・伝達齟齬",
+            description: "熱気と濃煙が激化。小隊長が無線および口頭で「退室（撤退）」を指示。隊列を反転し退室を開始。",
+            commanderView: "【危機の瞬間】隊員全員に退室の意図は伝わったか？「火点を叩く」意識と「撤退する」意識のズレがないか確認したか？",
+            analysis: "報告書による検証：面体ごしの会話や無線環境の悪さにより、1番員への退室指示が正確に伝わっていなかった、あるいは意図の共有が不十分だった可能性がある。",
+            keyPoints: [
+            "環境悪化：熱気上昇、視界不良継続",
+            "コミュニケーション：拡声装置の状況、接触による合図の有無",
+            "隊列管理：退室時の順序変更（先頭が変わるリスク）"
+            ],
+            riskLevel: "危険",
+            type: "critical"
+        },
+        {
+            id: 5,
+            time: "23:03",
+            phase: "緊急事態",
+            title: "隊員行方不明の発覚",
+            description: "小隊長と2番員が階段室（安全区画）へ退室。しかし1番員（殉職隊員）の姿がないことに気づく。",
+            commanderView: "【緊急事態発生】直ちに検索活動（MAYDAY）へ移行できるか？自己確保（退室確認）の徹底はなされていたか？",
+            analysis: "報告書による検証：退室時の人数確認（点呼・接触）のタイミングと、逸れた瞬間の認識遅れ。資機材（ロープ）がないため、手繰り寄せての検索が不能。",
+            keyPoints: [
+            "隊員掌握：退室直後の点呼で不在発覚",
+            "再進入の判断：濃煙熱気による二次災害リスク",
+            "装備活用：個人警報装置等の音響確認（火災音にかき消される可能性）"
+            ],
+            riskLevel: "緊急",
+            type: "alert"
+        }
+        ];
+
+        const LESSONS = [
+        {
+            title: "安全最優先の組織風土",
+            content: "「行けるかもしれない」ではなく「危ないから止める」と言える環境。任務の完遂よりも隊員の命を最優先にする共通認識の徹底。",
+            icon: <Shield className="w-6 h-6 text-blue-600" />
+        },
+        {
+            title: "基本原則の遵守（ロープ結索）",
+            content: "濃煙・視界不良の屋内進入時は、必ず検索ロープまたは確保ロープを使用すること。ホースのみを頼りにした進入・退室は、ループや障害物により方向を見失うリスクが高い。",
+            icon: <Activity className="w-6 h-6 text-red-600" />
+        },
+        {
+            title: "確実な意思伝達と確認",
+            content: "面体装着時は声が通りにくい。身体接触による合図、復唱確認（フィードバック）、無線の一斉周知など、複数の手段で「退室」の意思を全隊員が理解したか確認する。",
+            icon: <Radio className="w-6 h-6 text-green-600" />
+        },
+        {
+            title: "隊員相互の状況把握",
+            content: "活動中、特に退室時は隊員同士の身体的接触や声掛けを絶やさない。誰が先頭で、誰が殿（しんがり）かを明確にし、全員が揃うまで安全区画へ移動しない。",
+            icon: <UserCheck className="w-6 h-6 text-purple-600" />
+        }
+        ];
+
+        // --- コンポーネント ---
+
+        const Header = ({ setView }) => (
+        <header className="bg-slate-900 text-white p-4 shadow-md sticky top-0 z-50">
+            <div className="container mx-auto flex justify-between items-center">
+            <div className="flex items-center gap-2">
+                <AlertTriangle className="text-red-500" />
+                <h1 className="text-xl font-bold">葵消防署管内建物火災 検証・学習アプリ</h1>
+            </div>
+            <nav className="hidden md:flex gap-4 text-sm font-medium">
+                <button onClick={() => setView('timeline')} className="hover:text-red-400 transition">時系列検証</button>
+                <button onClick={() => setView('simulation')} className="hover:text-red-400 transition">指揮隊視点シミュレーション</button>
+                <button onClick={() => setView('lessons')} className="hover:text-red-400 transition">教訓・提言</button>
+            </nav>
+            <div className="md:hidden">
+                <Menu />
+            </div>
+            </div>
+        </header>
+        );
+
+        const TimelineView = () => (
+        <div className="max-w-3xl mx-auto py-8 px-4">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-slate-800">
+            <Clock className="text-slate-600" />
+            事案経過時系列（検証）
+            </h2>
+            <div className="relative border-l-4 border-slate-300 ml-4 space-y-8">
+            {SCENARIO_DATA.map((item) => (
+                <div key={item.id} className="mb-8 ml-6 relative group">
+                <span className={`absolute -left-[38px] top-0 flex items-center justify-center w-8 h-8 rounded-full ring-4 ring-white ${item.type === 'critical' || item.type === 'alert' ? 'bg-red-600' : 'bg-slate-500'} text-white`}>
+                    {item.type === 'critical' ? <AlertOctagon size={16} /> : <Clock size={16} />}
+                </span>
+                <div className="bg-white p-5 rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition">
+                    <div className="flex justify-between items-start mb-2">
+                    <span className="text-sm font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">{item.time}</span>
+                    <span className={`text-xs font-bold px-2 py-1 rounded text-white ${item.riskLevel === '極高' || item.riskLevel === '緊急' ? 'bg-red-600' : item.riskLevel === '高' ? 'bg-orange-500' : 'bg-blue-500'}`}>
+                        リスク: {item.riskLevel}
+                    </span>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">{item.title}</h3>
+                    <p className="text-slate-600 mb-4">{item.description}</p>
+                    
+                    {item.analysis && (
+                    <div className="bg-red-50 p-3 rounded border-l-4 border-red-500 mt-4">
+                        <h4 className="text-sm font-bold text-red-800 mb-1 flex items-center gap-1">
+                        <BookOpen size={14} /> 事故調査報告書による分析
+                        </h4>
+                        <p className="text-sm text-red-700">{item.analysis}</p>
+                    </div>
+                    )}
+                </div>
+                </div>
+            ))}
+            </div>
+        </div>
+        );
+
+        const SimulationMode = () => {
+        const [activeStep, setActiveStep] = useState(0);
+        const currentScenario = SCENARIO_DATA[activeStep];
+
+        return (
+            <div className="max-w-4xl mx-auto py-8 px-4">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-slate-800">
+                <Activity className="text-blue-600" />
+                指揮隊・小隊長視点シミュレーション
+            </h2>
+            <p className="mb-6 text-slate-600">
+                当時の状況において、指揮官は何を考え、どのような判断を下すべきだったか。思考のプロセスを追体験します。
+            </p>
+
+            {/* ステップ進行バー */}
+            <div className="flex mb-8 overflow-x-auto pb-2">
+                {SCENARIO_DATA.map((step, index) => (
+                <div 
+                    key={index} 
+                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mr-4 text-sm font-bold cursor-pointer transition-colors ${index === activeStep ? 'bg-blue-600 text-white' : index < activeStep ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'}`}
+                    onClick={() => setActiveStep(index)}
+                >
+                    {index + 1}
+                </div>
+                ))}
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+                {/* 左側：状況付与 */}
+                <div className="bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-600">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-slate-800">状況付与 ({currentScenario.time})</h3>
+                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold">{currentScenario.phase}</span>
+                </div>
+                <div className="space-y-4">
+                    <p className="text-lg text-slate-700 font-medium">{currentScenario.description}</p>
+                    <div className="bg-slate-50 p-4 rounded-lg">
+                    <h4 className="font-bold text-slate-700 mb-2 border-b pb-1">把握すべき重要情報</h4>
+                    <ul className="list-disc list-inside text-sm text-slate-600 space-y-1">
+                        {currentScenario.keyPoints.map((point, idx) => (
+                        <li key={idx}>{point}</li>
+                        ))}
+                    </ul>
+                    </div>
+                </div>
+                </div>
+
+                {/* 右側：指揮官の思考・検証 */}
+                <div className="space-y-6">
+                <div className="bg-slate-800 text-white p-6 rounded-xl shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <UserCheck size={100} />
+                    </div>
+                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-yellow-400">
+                    <AlertOctagon size={20} />
+                    指揮官の思考・判断
+                    </h3>
+                    <p className="text-slate-200 italic leading-relaxed text-lg">
+                    "{currentScenario.commanderView}"
+                    </p>
+                </div>
+
+                {currentScenario.type === 'critical' || currentScenario.type === 'alert' ? (
+                    <div className="bg-red-100 p-5 rounded-xl border border-red-200">
+                    <h4 className="text-red-800 font-bold mb-2 flex items-center gap-2">
+                        <AlertTriangle size={18} />
+                        思考の分岐点・重要検証
+                    </h4>
+                    <p className="text-red-700 text-sm leading-relaxed">
+                        {currentScenario.analysis || "この局面での判断が生死を分ける可能性があります。基本原則（ロープ使用、2人1組の徹底、確実な意思伝達）が遵守されているか、常に自問自答する必要があります。"}
+                    </p>
+                    </div>
+                ) : (
+                    <div className="bg-blue-50 p-5 rounded-xl border border-blue-200">
+                    <h4 className="text-blue-800 font-bold mb-2 flex items-center gap-2">
+                        <Shield size={18} />
+                        活動のポイント
+                    </h4>
+                    <p className="text-blue-700 text-sm">
+                        リスクレベル「{currentScenario.riskLevel}」のフェーズです。次の展開を予測し、安全管理体制を先行して構築することが求められます。
+                    </p>
+                    </div>
+                )}
+                </div>
+            </div>
+
+            <div className="mt-8 flex justify-end">
+                <button 
+                onClick={() => setActiveStep(prev => Math.min(prev + 1, SCENARIO_DATA.length - 1))}
+                disabled={activeStep === SCENARIO_DATA.length - 1}
+                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-white transition ${activeStep === SCENARIO_DATA.length - 1 ? 'bg-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                >
+                次のフェーズへ進む <ChevronRight />
+                </button>
+            </div>
+            </div>
+        );
+        };
+
+        const LessonsView = () => (
+        <div className="max-w-4xl mx-auto py-8 px-4">
+            <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold text-slate-800 mb-4">再発防止への提言・教訓</h2>
+            <p className="text-slate-600 max-w-2xl mx-auto">
+                本報告書から得られた教訓は、全ての消防活動に通じる普遍的な安全管理の指針です。
+                「またか」を繰り返さないために、以下のポイントを組織全体で共有する必要があります。
+            </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+            {LESSONS.map((lesson, idx) => (
+                <div key={idx} className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition border-t-4 border-slate-600">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-slate-100 rounded-full">
+                    {lesson.icon}
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-800">{lesson.title}</h3>
+                </div>
+                <p className="text-slate-600 leading-relaxed">
+                    {lesson.content}
+                </p>
+                </div>
+            ))}
+            </div>
+
+            <div className="mt-10 bg-slate-800 text-white p-8 rounded-xl">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <MapPin /> 静岡市葵消防署管内における課題
+            </h3>
+            <p className="mb-4 text-slate-300">
+                葵区は繁華街（呉服町等）から山間部まで広大な面積を有します。特に古い雑居ビルや木造密集地では、以下の特性への理解が不可欠です。
+            </p>
+            <ul className="list-disc list-inside space-y-2 text-slate-300">
+                <li>不規則な増改築による屋内構造の複雑化（迷路化）</li>
+                <li>防火区画の不備や、可燃物の過積載</li>
+                <li>無線不感地帯の把握と、代替通信手段の確保</li>
+                <li>気象条件（乾燥注意報発令時など）による火勢拡大の早さ</li>
+            </ul>
+            <div className="mt-6 pt-6 border-t border-slate-600 text-sm text-slate-400">
+                出典：静岡市葵消防署管内建物火災事故調査報告書（令和5年8月）ほか関連資料
+            </div>
+            </div>
+        </div>
+        );
+
+        // --- メインアプリ ---
+
+        function App() {
+            const [view, setView] = useState('simulation'); // default view
+
+            return (
+                <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+                <Header setView={setView} />
+                
+                <main>
+                    {view === 'timeline' && <TimelineView />}
+                    {view === 'simulation' && <SimulationMode />}
+                    {view === 'lessons' && <LessonsView />}
+                </main>
+                
+                {/* モバイル用ナビゲーション (簡易) */}
+                <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-3 text-xs font-bold shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-40">
+                    <button onClick={() => setView('timeline')} className={`flex flex-col items-center ${view === 'timeline' ? 'text-blue-600' : 'text-slate-500'}`}>
+                    <Clock size={20} />
+                    <span>時系列</span>
+                    </button>
+                    <button onClick={() => setView('simulation')} className={`flex flex-col items-center ${view === 'simulation' ? 'text-blue-600' : 'text-slate-500'}`}>
+                    <Activity size={20} />
+                    <span>シミュ</span>
+                    </button>
+                    <button onClick={() => setView('lessons')} className={`flex flex-col items-center ${view === 'lessons' ? 'text-blue-600' : 'text-slate-500'}`}>
+                    <BookOpen size={20} />
+                    <span>教訓</span>
+                    </button>
+                </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
