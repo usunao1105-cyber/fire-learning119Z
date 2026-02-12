@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nikkei 225 Options Academy</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (for JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Custom Tailwind Configuration to match the design -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Helvetica Neue', 'Arial', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'sans-serif'],
+                        serif: ['Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar for a premium feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- ICONS (SVG Components replacing lucide-react) ---
+        const BookOpen = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        );
+        const CheckCircle = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        );
+        const RotateCcw = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        );
+        const Award = ({ className, size }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size || 24} height={size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+        );
+        const ChevronDown = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"/></svg>
+        );
+        const ChevronUp = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="18 15 12 9 6 15"/></svg>
+        );
+        const GraduationCap = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        );
+        const ArrowRight = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        );
+
+        // --- DATA: FAQ (50 Questions) ---
+        const FAQ_DATA = [
+            {
+                level: "Level 1: 基礎概念",
+                items: [
+                { q: "オプション取引とは何ですか？", a: "ある商品を、将来の決められた日（満期日）に、あらかじめ決められた価格（権利行使価格）で「買う権利」または「売る権利」を売買する取引のことです。" },
+                { q: "「コール」とは何ですか？", a: "原資産（日経平均株価など）を買う権利のことです。相場が上昇すると予想する場合に「買い」、上昇しない（下落または横ばい）と予想する場合に「売り」を行います。" },
+                { q: "「プット」とは何ですか？", a: "原資産を売る権利のことです。相場が下落すると予想する場合に「買い」、下落しない（上昇または横ばい）と予想する場合に「売り」を行います。" },
+                { q: "「権利行使価格」とは何ですか？", a: "満期日に原資産を売買する際の、あらかじめ設定された価格のことです（例：29,000円で買う権利など）。" },
+                { q: "「プレミアム（オプション価格）」とは何ですか？", a: "オプション（権利）自体の価格のことです。買い手はプレミアムを支払い、売り手はプレミアムを受け取ります。" },
+                { q: "オプションの「買い手」の最大損失はいくらですか？", a: "最初に支払ったプレミアム（オプション購入代金）の額に限定されます。" },
+                { q: "オプションの「売り手」の最大損失はいくらですか？", a: "原資産価格の変動によっては、損失が無限大に拡大する可能性があります。その代わり、相場が動かなくてもプレミアムという利益を得られるメリットがあります。" },
+                { q: "SQ（スペシャル・クォーテーション）とは何ですか？", a: "取引の満期日に、権利行使や決済を行うために算出される最終清算数値のことです。" },
+                { q: "満期日（SQ日）はいつですか？", a: "通常のオプション（マンスリー）は毎月第2金曜日です。" },
+                { q: "満期日より前に決済することはできますか？", a: "はい、反対売買（転売または買戻し）を行うことで、満期日を待たずに決済し、損益を確定させることができます。" },
+                ]
+            },
+            {
+                level: "Level 2: 商品仕様（ミニ・マイクロ）",
+                items: [
+                { q: "日経225ミニオプションとは何ですか？", a: "従来の日経225オプションの10分の1の単位で取引できる商品です。少額から取引が可能で、より細かいリスク管理ができます。" },
+                { q: "日経225ミニオプションの取引単位（倍率）は何倍ですか？", a: "オプション価格（プレミアム）の100倍です。従来の日経225オプションは1,000倍です。" },
+                { q: "日経225ミニオプションの呼値（値段の刻み）はいくらですか？", a: "原則として5円刻みです（プレミアムが100円未満などの場合は変動する場合があります）。" },
+                { q: "最低取引単位（1枚）を買うのに必要な資金の計算式は？", a: "「プレミアム価格 × 100倍」です。例えばプレミアムが50円の場合、5,000円が必要になります。" },
+                { q: "Weeklyオプション（ウィークリーオプション）とは何ですか？", a: "第2金曜日以外の各週の金曜日を満期日とするオプションです。日経225ミニオプションの一部として取引可能です。" },
+                { q: "Weeklyオプションのメリットは何ですか？", a: "満期までの期間が短いため、雇用統計や選挙などの特定のイベントリスクに絞った短期的なヘッジや投機が可能です。" },
+                { q: "日経225マイクロ先物とは何ですか？", a: "日経225ミニ先物のさらに10分の1のサイズ（日経平均株価の10倍）で取引できる先物です。ミニオプションと組み合わせて使いやすいサイズ設計になっています。" },
+                { q: "取引ができる時間帯はいつですか？", a: "日中立会（8:45～15:15）と、夜間立会（16:30～翌6:00）があります。" },
+                { q: "手数料はかかりますか？", a: "はい、証券会社ごとに定められた売買手数料がかかります。" },
+                { q: "権利行使の手数料はかかりますか？", a: "日経225オプションやミニオプションの場合、権利行使手数料は無料としている証券会社が多いですが、各社の規定を確認する必要があります。" },
+                ]
+            },
+            {
+                level: "Level 3: 証拠金とリスク管理",
+                items: [
+                { q: "オプションを買う場合、証拠金は必要ですか？", a: "いいえ、買い手はプレミアムを支払うだけでよく、証拠金は必要ありません。" },
+                { q: "オプションを売る場合、証拠金は必要ですか？", a: "はい、売り手は損失が拡大するリスクがあるため、証拠金を差し入れる必要があります。" },
+                { q: "現在の証拠金計算方式は何ですか？", a: "2023年11月から「VaR（バリュー・アット・リスク）方式」が採用されています。以前のSPAN方式から変更されました。" },
+                { q: "VaR方式の特徴は何ですか？", a: "過去5年（1250日）のデータを用い、99%の確率で発生しうる損失額をカバーできる水準を計算します。売りと買いで証拠金額が異なり、毎日見直しが行われます。" },
+                { q: "「追証（おいしょう）」とは何ですか？", a: "相場の変動により損失が発生し、口座にある証拠金が必要額を下回った場合に、追加で入金しなければならないお金のことです。" },
+                { q: "追証が発生した場合、いつまでに入金が必要ですか？", a: "通常、翌営業日の正午までに入金（または振替）が必要です。解消しない場合、建玉が強制決済されます。" },
+                { q: "「ネット・オプション・バリュー（NOV）」とは何ですか？", a: "オプションの清算価値の総額のことです。証拠金計算において、リスク量に加算または減算されます。" },
+                { q: "ロスカットルールはありますか？", a: "証券会社によっては、証拠金維持率が一定水準を下回ると自動的に強制決済されるロスカットルールを設けています。" },
+                { q: "どのような人が口座を開設できますか？", a: "一般的に、十分な金融資産、投資経験、知識があり、常時連絡が取れる成人（18歳以上、80歳未満など）が対象です。審査があります。" },
+                { q: "オプションの売り建てには特別な基準がありますか？", a: "はい、売りはリスクが高いため、買いのみの口座よりも厳しい資産基準（例：年収500万円以上や資産額など）が設けられている場合があります。" },
+                ]
+            },
+            {
+                level: "Level 4: 投資戦略と実践",
+                items: [
+                { q: "相場が大きく動くと予想していますが、上がるか下がるかわかりません。どんな戦略がありますか？", a: "「ロング・ストラドル」や「ロング・ストラングル」が有効です。コールとプットを両方買うことで、どちらかに大きく動けば利益になります。" },
+                { q: "相場がほとんど動かないと予想しています。どんな戦略がありますか？", a: "「ショート・ストラドル」や「ショート・ストラングル」（コールとプットの両方を売る）や、「コンドル戦略」などが有効です。動かなければプレミアム分の利益が得られます。" },
+                { q: "「カバードコール」とは何ですか？", a: "株式などの原資産を保有しながら、そのコールオプションを売る戦略です。値上がり益の一部を放棄する代わりに、確実にプレミアムを受け取ることができます。" },
+                { q: "「プロテクティブ・プット」とは何ですか？", a: "保有している資産の下落に備えて、プットオプションを買う戦略です。保険のような役割を果たします。" },
+                { q: "「スプレッド取引」とは何ですか？", a: "異なる権利行使価格や限月のオプションを組み合わせて（買いと売りを同時に行う）、リスクやリターンを調整する手法です。" },
+                { q: "「バーティカル・スプレッド」とは何ですか？", a: "同じ限月で異なる権利行使価格のオプションを、一方は買い、一方は売る戦略です（例：強気の場合はブル・コール・スプレッドなど）。" },
+                { q: "満期日に権利行使価格とSQ値が同じだった場合どうなりますか？", a: "理論上は価値がゼロになりますが、手数料などを考慮して判断されます。通常、イン・ザ・マネー（利益が出る状態）であれば自動権利行使されます。" },
+                { q: "「イン・ザ・マネー（ITM）」とはどういう状態ですか？", a: "権利行使をすると利益が出る状態です（コールなら株価＞行使価格、プットなら株価＜行使価格）。" },
+                { q: "「アウト・オブ・ザ・マネー（OTM）」とはどういう状態ですか？", a: "権利行使をしても利益が出ない（無価値な）状態です。" },
+                { q: "「アット・ザ・マネー（ATM）」とはどういう状態ですか？", a: "原資産価格と権利行使価格が等しい、または非常に近い状態です。" },
+                ]
+            },
+            {
+                level: "Level 5: ギリシャ指標と高度なリスク管理",
+                items: [
+                { q: "「ギリシャ指標（Greeks）」とは何ですか？", a: "オプション価格がどのような要因で変動するかを数値化した指標です。デルタ、ガンマ、ベガ、セータなどがあります。" },
+                { q: "「デルタ（Delta）」は何を表しますか？", a: "原資産価格が1円動いたときに、オプション価格がいくら動くかを示します。また、ヘッジに必要な原資産の比率も表します。" },
+                { q: "「ガンマ（Gamma）」は何を表しますか？", a: "原資産価格の変動に対する「デルタの変化量」を示します。ガンマが大きいとデルタが激しく変動するため、リスク管理が難しくなります。" },
+                { q: "「セータ（Theta）」は何を表しますか？", a: "時間の経過によってオプション価格が減少する額（タイムディケイ）を示します。通常はマイナスの値をとり、満期が近づくにつれて減少スピードが加速します。" },
+                { q: "「ベガ（Vega）」は何を表しますか？", a: "ボラティリティ（変動率）が1%変化したときに、オプション価格がいくら変化するかを示します。" },
+                { q: "「インプライド・ボラティリティ（IV）」とは何ですか？", a: "市場のオプション価格から逆算された、将来の予想変動率のことです。IVが高いとオプション価格は割高になります。" },
+                { q: "「ヒストリカル・ボラティリティ（HV）」との違いは？", a: "HVは過去のデータに基づく変動率であるのに対し、IVは市場参加者の将来予測に基づく変動率です。" },
+                { q: "「スマイルカーブ」とは何ですか？", a: "横軸に権利行使価格、縦軸にIVをとったグラフが、笑顔のように両端が上がった曲線になる現象です。市場の急変リスクを織り込んでいることを示します。" },
+                { q: "「デルタ・ニュートラル」とはどのような状態ですか？", a: "オプションと原資産を組み合わせて、全体のデルタをゼロにすることです。これにより、株価の方向性に左右されず、ボラティリティの変化や時間経過による利益を狙うことができます。" },
+                { q: "サーキット・ブレーカーが発動するとオプション取引はどうなりますか？", a: "先物市場でサーキット・ブレーカーが発動し取引が一時中断されると、オプション取引も連動して一時中断されます。また、制限値幅が拡大されることがあります。" },
+                ]
+            }
+        ];
+
+        // --- DATA: QUIZ (50 Questions) ---
+        const QUIZ_MASTER_DATA = [
+            // Level 1
+            { id: 1, q: "日経225オプション取引において、「買う権利」のことを何と呼びますか？", options: ["プット", "コール", "プレミアム", "ストライク"], ansIndex: 1, exp: "「コール」は原資産を買う権利のことです。逆に売る権利を「プット」と呼びます。" },
+            { id: 2, q: "日経225オプション取引において、「売る権利」のことを何と呼びますか？", options: ["プット", "コール", "フューチャー", "ロング"], ansIndex: 0, exp: "「プット」は原資産を売る権利のことです。" },
+            { id: 3, q: "オプション取引の価格（権利の価格）のことを何と呼びますか？", options: ["権利行使価格", "プレミアム", "証拠金", "SQ値"], ansIndex: 1, exp: "オプションの買い手が売り手に支払う権利の対価を「プレミアム（オプション料）」と呼びます。" },
+            { id: 4, q: "オプションの「買い手」の最大損失額はどうなりますか？", options: ["無限大になる可能性がある", "支払ったプレミアムの額に限定される", "証拠金の額に限定される", "日経平均株価が0になるまで拡大する"], ansIndex: 1, exp: "オプションの買い手は、権利を放棄することができるため、損失は最初に支払ったプレミアム（購入代金）のみに限定されます。" },
+            { id: 5, q: "オプションの「売り手」の最大損失額はどうなりますか？", options: ["受け取ったプレミアムの額に限定される", "証拠金の額に限定される", "利益と相殺されて0になる", "理論上、無限大（または非常に大きく）になる可能性がある"], ansIndex: 3, exp: "オプションの売り手は、買い手の権利行使に応じる義務があるため、相場が予想と逆に大きく動いた場合、損失が無限に拡大するリスクがあります。" },
+            { id: 6, q: "日経225オプション取引の満期日に算出される、最終的な決済価格を何と呼びますか？", options: ["終値", "始値", "SQ（スペシャル・クォーテーション）", "権利行使価格"], ansIndex: 2, exp: "満期日（SQ日）に決済のために用いられる最終清算数値をSQ（特別清算指数）と呼びます。" },
+            { id: 7, q: "日経225先物・オプション取引ができる「夜間立会（ナイト・セッション）」の終了時間はいつですか？", options: ["23:30", "翌3:00", "翌5:30", "翌6:00"], ansIndex: 3, exp: "夜間立会は16:30（または17:00）から翌日の午前6:00まで行われます。" },
+            { id: 8, q: "「権利行使価格」とは何ですか？", options: ["オプションを買うために支払う手数料", "満期日に原資産を売買するあらかじめ決められた価格", "証券会社に預ける担保金", "満期日に算出される日経平均株価の始値"], ansIndex: 1, exp: "オプション取引において、あらかじめ定められた売買価格のことを権利行使価格と呼びます。" },
+            { id: 9, q: "日経225ミニオプションの取引単位（倍率）は、プレミアムの何倍ですか？", options: ["10倍", "100倍", "1,000倍", "10,000倍"], ansIndex: 1, exp: "日経225ミニオプションの取引単位はプレミアムの100倍です。通常の日経225オプション（ラージ）は1,000倍です。" },
+            { id: 10, q: "日経225マイクロ先物の取引単位は、日経225ミニ先物の何分の一ですか？", options: ["2分の1", "5分の1", "10分の1", "100分の1"], ansIndex: 2, exp: "日経225マイクロ先物は、日経225ミニ先物の10分の1のサイズ（日経平均株価の10倍）で取引されます。" },
+            // Level 2
+            { id: 11, q: "コール・オプションを買うべき相場観はどれですか？", options: ["相場が大きく上昇すると予想する時", "相場が大きく下落すると予想する時", "相場が全く動かないと予想する時", "相場が緩やかに下落すると予想する時"], ansIndex: 0, exp: "コールの買いは「買う権利」を持つため、原資産価格が権利行使価格を超えて上昇するほど利益が出ます。" },
+            { id: 12, q: "プット・オプションを買うべき相場観はどれですか？", options: ["相場が大きく上昇すると予想する時", "相場が大きく下落すると予想する時", "相場が横ばいで推移すると予想する時", "相場が緩やかに上昇すると予想する時"], ansIndex: 1, exp: "プットの買いは「売る権利」を持つため、原資産価格が権利行使価格を下回って下落するほど利益が出ます。" },
+            { id: 13, q: "権利行使価格29,000円のコールを300円で1枚買った場合の損益分岐点はいくらですか？（手数料は考慮しない）", options: ["28,700円", "29,000円", "29,300円", "30,000円"], ansIndex: 2, exp: "コール買いの損益分岐点は「権利行使価格 ＋ 支払ったプレミアム」です。29,000円 ＋ 300円 ＝ 29,300円となります。" },
+            { id: 14, q: "権利行使価格29,000円のプットを200円で1枚売った場合、利益が出るのは日経平均がいくら以上の時ですか？（手数料は考慮しない）", options: ["28,800円以上", "29,000円以上", "29,200円以上", "28,000円以上"], ansIndex: 0, exp: "プット売りの損益分岐点は「権利行使価格 － 受け取ったプレミアム」です。29,000円 － 200円 ＝ 28,800円となり、これより株価が下がると損失になりますが、これ以上であれば利益になります。" },
+            { id: 15, q: "日経225ミニオプションで、プレミアム50円の銘柄を1枚買うのに必要な資金はいくらですか？", options: ["50円", "500円", "5,000円", "50,000円"], ansIndex: 2, exp: "日経225ミニオプションの取引単位は100倍なので、50円 × 100倍 ＝ 5,000円となります。" },
+            { id: 16, q: "2023年5月から導入された、日経225ミニオプションの「Weekly（ウィークリー）限月」の満期日はいつですか？", options: ["毎月第2金曜日のみ", "毎月第1金曜日のみ", "第2金曜日を除く、各週の金曜日", "毎週水曜日"], ansIndex: 2, exp: "ウィークリーオプションは、通常のSQ日（第2金曜日）以外の各週の金曜日を満期日として設定されています。" },
+            { id: 17, q: "オプション取引において、買い手は証拠金を差し入れる必要がありますか？", options: ["必要である", "必要ない（プレミアムの支払いのみ）", "売り手の半額だけ必要", "SQ決済の時だけ必要"], ansIndex: 1, exp: "オプションの買い手は、最大損失がプレミアムに限定されるため、証拠金の差し入れは不要です（購入代金の支払いのみ）。" },
+            { id: 18, q: "2023年11月から適用された新しい証拠金計算方式は何ですか？", options: ["SPAN方式", "VaR（バリュー・アット・リスク）方式", "プライム方式", "レバレッジ方式"], ansIndex: 1, exp: "従来のSPAN方式から、過去のデータに基づいてリスクを計算するVaR方式に変更されました。" },
+            { id: 19, q: "VaR方式の証拠金計算において、売り建玉と買い建玉の証拠金額の関係はどうなりますか？", options: ["常に同額である", "常に買いの方が高い", "売りと買いで異なる金額になる", "証拠金は発生しない"], ansIndex: 2, exp: "SPAN方式では売り買い同額でしたが、VaR方式ではリスクに応じて売りと買いで異なる証拠金額が設定されます。" },
+            { id: 20, q: "「追証（おいしょう）」が発生した場合、一般的にいつまでに入金が必要ですか？", options: ["発生から3日以内", "次の満期日まで", "翌営業日の正午（または指定時刻）まで", "月末まで"], ansIndex: 2, exp: "多くの証券会社では、追証が発生した場合、翌営業日の正午などの早い段階での解消（入金）が求められます。" },
+            // Level 3
+            { id: 21, q: "オプション取引における「イン・ザ・マネー（ITM）」とはどのような状態ですか？", options: ["権利行使をすると損失が出る状態", "権利行使をしても損益がゼロの状態", "権利行使をすると利益が出る（本源的価値がある）状態", "証拠金が不足している状態"], ansIndex: 2, exp: "ITMは、コールなら「株価＞行使価格」、プットなら「株価＜行使価格」の状態で、権利行使価値がある状態を指します。" },
+            { id: 22, q: "オプション取引における「アウト・オブ・ザ・マネー（OTM）」とはどのような状態ですか？", options: ["権利行使をすると利益が出る状態", "権利行使をする意味がない（無価値な）状態", "証拠金が余っている状態", "満期日を過ぎた状態"], ansIndex: 1, exp: "OTMは、権利行使しても利益が出ない状態で、満期時にこの状態だとオプションは無価値で消滅します。" },
+            { id: 23, q: "日経225ミニオプションの呼値（値段の刻み）について正しいものはどれですか？", options: ["常に10円刻み", "常に1円刻み", "プレミアムが100円以下の場合は1円刻み", "プレミアムが1,000円以上の場合は100円刻み"], ansIndex: 2, exp: "ミニオプションの場合、原則として100円以下は1円刻み、100円超は5円刻みとなります。" },
+            { id: 24, q: "オプションの売り手が、買い手の権利行使によって自動的に建玉が決済されることを何といいますか？", options: ["権利放棄", "権利割当", "転売", "買戻し"], ansIndex: 1, exp: "買い手が権利行使を行った場合、売り手にはその権利行使に応じる義務が割り当てられます（権利割当）。" },
+            { id: 25, q: "先物・オプション取引口座を開設するための一般的な条件として誤っているものはどれですか？", options: ["十分な金融資産があること", "投資経験があること", "常時連絡が取れること", "年齢が20歳未満であること"], ansIndex: 3, exp: "一般的に未成年（現在は18歳未満）は開設できず、成人であることが条件です。また上限年齢（例：80歳未満）もあります。" },
+            { id: 26, q: "日経225オプションの「カバードコール」戦略とはどのようなものですか？", options: ["原資産を保有しながら、コールオプションを売る", "原資産を保有しながら、プットオプションを買う", "コールオプションを買い、プットオプションを売る", "コールオプションとプットオプションを同時に買う"], ansIndex: 0, exp: "保有株の値上がり益の一部を放棄する代わりに、確実にプレミアムを受け取る戦略です。" },
+            { id: 27, q: "満期日（SQ）に、イン・ザ・マネー（利益が出る状態）だったオプションはどうなりますか？", options: ["自動的に消滅する", "自動的に権利行使され、差金決済される", "翌月に持ち越される", "手数料を払って権利放棄される"], ansIndex: 1, exp: "満期日に本源的価値がある（ITM）場合、自動的に権利行使が行われ、SQ値との差額が決済されます。" },
+            { id: 28, q: "サーキット・ブレーカー制度が発動された場合、オプション取引はどうなりますか？", options: ["通常通り取引される", "制限値幅が縮小される", "先物取引と連動して一時中断される", "証拠金が免除される"], ansIndex: 2, exp: "先物市場でサーキット・ブレーカーが発動すると、オプション市場も連動して一時中断されます。" },
+            { id: 29, q: "証拠金計算における「ネット・オプション・バリュー（NOV）」とは何ですか？", options: ["オプションの時間価値のみの合計", "オプションの清算価値（解散価値）の総額", "過去の最大損失額", "将来予測される利益額"], ansIndex: 1, exp: "NOVは保有しているオプションをその時点の価格で清算した場合の価値の総額で、証拠金計算においてリスク額から差し引かれます（買いポジションなら証拠金余力が増える）。" },
+            { id: 30, q: "日経225ミニオプションの手数料体系について、一般的な特徴はどれですか？", options: ["無料である", "約定代金の一定割合（％）や最低手数料が設定されている", "利益が出た時だけ支払う", "月額固定制である"], ansIndex: 1, exp: "例えば売買代金の0.2%（最低手数料20円など）といった形で設定されていることが多いです。" },
+            // Level 4 & 5
+            { id: 31, q: "相場が大きく動くと予想するが、上がるか下がるか分からない時に有効な戦略は？", options: ["ショート・ストラドル（コール売り＋プット売り）", "ロング・ストラドル（コール買い＋プット買い）", "カバードコール", "ネイキッド・プット売り"], ansIndex: 1, exp: "どちらかに大きく動けば、片方の利益がもう片方の損失（プレミアム）を上回るため利益になります。" },
+            { id: 32, q: "相場がほとんど動かない（ボックス圏）と予想する時に有効な戦略は？", options: ["ロング・ストラドル", "ショート・ストラドル（コール売り＋プット売り）", "ロング・コール", "ロング・プット"], ansIndex: 1, exp: "相場が動かなければ、コールとプット両方のプレミアムを受け取って利益にできます。" },
+            { id: 33, q: "オプション価格の感応度を示す指標「デルタ（Delta）」は何を表しますか？", options: ["時間経過による価格の変化", "ボラティリティの変化による価格の変化", "原資産価格の変動に対するオプション価格の変化額", "金利の変化による価格の変化"], ansIndex: 2, exp: "日経平均が1円動いた時にオプション価格が何円動くかを示します。" },
+            { id: 34, q: "オプションの時間的価値の減少を表す指標はどれですか？", options: ["デルタ", "ガンマ", "ベガ", "セータ（Theta）"], ansIndex: 3, exp: "セータは「タイムディケイ（時間的減価）」を示し、満期に近づくにつれてオプション価格が下がる要因を数値化したものです。" },
+            { id: 35, q: "「インプライド・ボラティリティ（IV）」が高くなると、オプション価格はどうなりますか？", options: ["安くなる", "高くなる", "変わらない", "ゼロになる"], ansIndex: 1, exp: "IV（予想変動率）が高いということは、将来大きく動く可能性が高いと市場が見ているため、オプションの保険料（プレミアム）は高くなります。" },
+            { id: 36, q: "「ガンマ（Gamma）」は何の変化率を表しますか？", options: ["オプション価格の変化率", "デルタの変化率", "IVの変化率", "セータの変化率"], ansIndex: 1, exp: "原資産価格が変動した時に、デルタの値がどれくらい変化するかを示します。" },
+            { id: 37, q: "「スマイルカーブ」とは、何をグラフにしたものですか？", options: ["横軸に時間、縦軸に価格", "横軸に権利行使価格、縦軸にインプライド・ボラティリティ（IV）", "横軸に日経平均、縦軸に損益", "横軸に出来高、縦軸に建玉"], ansIndex: 1, exp: "通常、ATMから離れた権利行使価格のIVが高くなる現象を指し、グラフの形状が笑った口元に見えることからこう呼ばれます。" },
+            { id: 38, q: "「デルタ・ニュートラル」戦略とはどういう状態を目指すものですか？", options: ["デルタをプラスにして上昇益を狙う", "デルタをマイナスにして下落益を狙う", "デルタをゼロにして、株価変動リスクを排除する", "デルタを最大化してレバレッジをかける"], ansIndex: 2, exp: "複数のオプションや先物を組み合わせて全体のデルタをゼロにし、株価の方向性以外の要素（ボラティリティの変化など）で利益を狙う手法です。" },
+            { id: 39, q: "ブル・コール・スプレッド（強気）の組み方はどれですか？", options: ["低い権利行使価格のコールを買い、高い権利行使価格のコールを売る", "高い権利行使価格のコールを買い、低い権利行使価格のコールを売る", "コールを買い、プットを買う", "コールを売り、プットを売る"], ansIndex: 0, exp: "上昇を期待しつつ、売りのプレミアムでコストを下げて損失を限定する戦略です。" },
+            { id: 40, q: "満期日に権利行使価格とSQ値が同じだった場合、理論上の本源的価値はいくらですか？", options: ["無限大", "支払ったプレミアムの額", "ゼロ", "100円"], ansIndex: 2, exp: "差額がないため、本源的価値はゼロとなります。" },
+            { id: 41, q: "日経225オプションの取引において、流動性が最も高い（取引が活発な）のはどの限月ですか？", options: ["最も遠い限月", "直近の限月（期近）", "1年先の限月", "5年先の限月"], ansIndex: 1, exp: "期近の限月が最も取引参加者が多く、流動性が高いため、スプレッドも狭く取引しやすい傾向があります。" },
+            { id: 42, q: "「プロテクティブ・プット」戦略の目的は何ですか？", options: ["プレミアムを稼ぐこと", "保有している株式の下落リスクをヘッジ（保険）すること", "配当を倍にすること", "株主優待をもらうこと"], ansIndex: 1, exp: "株を持ちながらプットを買うことで、株価が暴落してもプットの利益でカバーする保険のような戦略です。" },
+            { id: 43, q: "「コンドル戦略（アイアンコンドル）」が狙う利益の源泉は何ですか？", options: ["相場の急激な変動", "相場が一定のレンジ内に収まることによる時間的価値の享受", "インプライド・ボラティリティの急騰", "金利の大幅な上昇"], ansIndex: 1, exp: "上下離れたアウト・オブ・ザ・マネーのオプションを売ることで、相場が動かない時にプレミアムを得る戦略です。" },
+            { id: 44, q: "急激な相場変動時に、オプション価格（プレミアム）が理論価格から大きく乖離することがある主な要因は？", options: ["金利の変動", "配当落ち", "需給の偏りとインプライド・ボラティリティ（IV）の急変", "為替の影響"], ansIndex: 2, exp: "パニック売りや急激なヘッジ需要によりIVが急騰し、プレミアムが跳ね上がることがあります（ベガの影響）。" },
+            { id: 45, q: "日経225ミニオプション取引において、買いポジションを保有し続けた場合、証拠金の追証が発生することはありますか？", options: ["毎日発生する可能性がある", "相場が急変した時だけ発生する", "発生しない", "SQの日に発生する"], ansIndex: 2, exp: "買い手はプレミアムを支払うだけで証拠金は不要なため、追証（追加証拠金）も発生しません。" },
+            { id: 46, q: "「ベガ（Vega）」の値が大きいオプション銘柄の特徴は？", options: ["満期までの期間が短い", "満期までの期間が長い", "権利行使価格が現在値から大きく離れている", "プレミアムが1円である"], ansIndex: 1, exp: "一般的に期間が長いオプションほど、ボラティリティの変化による価格への影響（ベガ）が大きくなります。" },
+            { id: 47, q: "プット・コール・パリティ（Put-Call Parity）とは何ですか？", options: ["プットとコールの価格が常に同じになる法則", "原資産、プット、コール、債券（金利）の価格間に成立する裁定関係式", "プットとコールの建玉数が同じになること", "満期日にプットとコールが同時に権利行使されること"], ansIndex: 1, exp: "合成先物などの裁定取引の根拠となる理論式で、市場価格がこれから乖離すると裁定機会が生まれます。" },
+            { id: 48, q: "日経225オプション取引で、SQ値が決定されるのはいつですか？", options: ["満期日の前日の終値", "満期日の日経平均株価の終値", "満期日の日経225構成銘柄の始値を元に算出された数値", "満期日の翌日の始値"], ansIndex: 2, exp: "SQ値は、満期日の朝の各構成銘柄の始値に基づいて算出されます（実際の指数とは多少ずれることがあります）。" },
+            { id: 49, q: "ボラティリティ・インデックス（日経平均VI）が「恐怖指数」と呼ばれる理由は？", options: ["数値が下がると株価が暴落するから", "投資家が相場の先行きに不安を感じ（急落を警戒し）、プット買いが増えると数値が急上昇するから", "常にマイナスの値をとるから", "取引手数料が高くなるから"], ansIndex: 1, exp: "相場急落時にIVが跳ね上がる性質があるため、投資家の恐怖感を表す指標とされます。" },
+            { id: 50, q: "以下のうち、リスク限定の戦略はどれですか？", options: ["ショート・ストラングル", "ネイキッド・コール売り", "ブル・コール・スプレッド", "ショート・ストラドル"], ansIndex: 2, exp: "買いと売りを組み合わせるスプレッド取引（買いの権利行使価格 ＜ 売りの権利行使価格）のため、最大利益も最大損失もあらかじめ限定されます。" },
+        ];
+
+        // --- COMPONENTS ---
+
+        // 1. FAQ Component
+        const FAQSection = () => {
+            const [activeLevel, setActiveLevel] = useState(0);
+            const [openItems, setOpenItems] = useState({});
+
+            const toggleItem = (levelIndex, itemIndex) => {
+                const key = `${levelIndex}-${itemIndex}`;
+                setOpenItems(prev => ({ ...prev, [key]: !prev[key] }));
+            };
+
+            return (
+                <div className="space-y-6">
+                <div className="text-center mb-8">
+                    <h2 className="text-2xl font-serif font-bold text-slate-800">知識の習得</h2>
+                    <p className="text-slate-500 mt-2">基礎から応用まで、段階的に学習します。</p>
+                </div>
+
+                {/* Level Tabs */}
+                <div className="flex flex-wrap justify-center gap-2 mb-6">
+                    {FAQ_DATA.map((section, idx) => (
+                    <button
+                        key={idx}
+                        onClick={() => setActiveLevel(idx)}
+                        className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-300 ${
+                        activeLevel === idx
+                            ? 'bg-slate-800 text-amber-400 shadow-md'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                        }`}
+                    >
+                        Level {idx + 1}
+                    </button>
+                    ))}
+                </div>
+
+                {/* FAQ Accordion */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                    <h3 className="font-semibold text-slate-700">{FAQ_DATA[activeLevel].level}</h3>
+                    <span className="text-xs font-semibold px-2 py-1 bg-amber-100 text-amber-800 rounded">
+                        {FAQ_DATA[activeLevel].items.length} Questions
+                    </span>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                    {FAQ_DATA[activeLevel].items.map((item, idx) => {
+                        const isOpen = openItems[`${activeLevel}-${idx}`];
+                        return (
+                        <div key={idx} className="group">
+                            <button
+                            onClick={() => toggleItem(activeLevel, idx)}
+                            className="w-full text-left p-5 flex items-start justify-between hover:bg-slate-50 transition-colors"
+                            >
+                            <span className={`font-medium text-sm md:text-base ${isOpen ? 'text-amber-700' : 'text-slate-700'}`}>
+                                <span className="inline-block w-6 font-serif italic text-slate-400 mr-2">Q{idx + 1 + (activeLevel * 10)}.</span>
+                                {item.q}
+                            </span>
+                            {isOpen ? <ChevronUp className="w-5 h-5 text-slate-400 flex-shrink-0 ml-4" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0 ml-4" />}
+                            </button>
+                            {isOpen && (
+                            <div className="px-5 pb-5 pl-12">
+                                <div className="bg-amber-50/50 p-4 rounded-lg text-sm md:text-base text-slate-700 leading-relaxed border-l-4 border-amber-400">
+                                <span className="font-bold text-amber-600 mr-2">A.</span>
+                                {item.a}
+                                </div>
+                            </div>
+                            )}
+                        </div>
+                        );
+                    })}
+                    </div>
+                </div>
+                </div>
+            );
+        };
+
+        // 2. Quiz Component
+        const QuizSection = () => {
+            const [questions, setQuestions] = useState([]);
+            const [userAnswers, setUserAnswers] = useState({}); // { questionId: selectedOptionIndex }
+            const [showResults, setShowResults] = useState(false);
+            const [score, setScore] = useState(0);
+
+            // Initialize Quiz (Random 10)
+            const startQuiz = () => {
+                const shuffled = [...QUIZ_MASTER_DATA].sort(() => 0.5 - Math.random());
+                setQuestions(shuffled.slice(0, 10));
+                setUserAnswers({});
+                setShowResults(false);
+                setScore(0);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            useEffect(() => {
+                startQuiz();
+            }, []);
+
+            const handleOptionSelect = (qId, optionIdx) => {
+                if (showResults) return;
+                setUserAnswers(prev => ({ ...prev, [qId]: optionIdx }));
+            };
+
+            const calculateScore = () => {
+                let currentScore = 0;
+                questions.forEach(q => {
+                if (userAnswers[q.id] === q.ansIndex) {
+                    currentScore++;
+                }
+                });
+                setScore(currentScore);
+                setShowResults(true);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            // Calculate progress for progress bar
+            const answeredCount = Object.keys(userAnswers).length;
+            const progressPercent = (answeredCount / 10) * 100;
+
+            return (
+                <div className="space-y-8 pb-12">
+                {!showResults ? (
+                    <div className="sticky top-4 z-10 bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-slate-200 mb-8 flex justify-between items-center transition-all">
+                    <div>
+                        <h2 className="font-serif font-bold text-slate-800">実力確認テスト</h2>
+                        <p className="text-xs text-slate-500">ランダムに選出された10問に回答してください</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                        <span className="text-sm font-medium text-slate-600">
+                        回答状況: <span className="text-amber-600 font-bold">{answeredCount}</span>/10
+                        </span>
+                        <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-gradient-to-r from-amber-400 to-amber-600 transition-all duration-500"
+                            style={{ width: `${progressPercent}%` }}
+                        />
+                        </div>
+                    </div>
+                    </div>
+                ) : (
+                    <div className="bg-slate-800 text-white p-8 rounded-2xl shadow-xl text-center animate-fade-in mb-8">
+                    <p className="text-amber-400 font-serif tracking-widest text-sm mb-2">RESULTS</p>
+                    <div className="text-5xl font-bold mb-2 font-serif">
+                        {score} <span className="text-2xl text-slate-400 font-normal">/ 10</span>
+                    </div>
+                    <p className="text-slate-300 mb-6">
+                        {score === 10 ? "素晴らしい！全問正解です。" :
+                        score >= 8 ? "合格圏内です。この調子で学習を続けましょう。" :
+                        "復習が必要です。解説を確認しましょう。"}
+                    </p>
+                    <button
+                        onClick={startQuiz}
+                        className="inline-flex items-center px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded-full transition-colors shadow-lg shadow-amber-900/20"
+                    >
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        再度挑戦する（問題を入れ替える）
+                    </button>
+                    </div>
+                )}
+
+                {/* Questions List */}
+                <div className="space-y-6">
+                    {questions.map((q, idx) => {
+                    const isCorrect = userAnswers[q.id] === q.ansIndex;
+                    const isSelected = userAnswers[q.id] !== undefined;
+
+                    // Border color logic for result state
+                    let containerClass = "bg-white p-6 md:p-8 rounded-xl shadow-sm border transition-all duration-300 ";
+                    if (showResults) {
+                        containerClass += isCorrect ? "border-emerald-500 ring-1 ring-emerald-500 bg-emerald-50/10" : "border-rose-400 ring-1 ring-rose-400 bg-rose-50/10";
+                    } else {
+                        containerClass += "border-slate-200 hover:border-amber-300";
+                    }
+
+                    return (
+                        <div key={q.id} className={containerClass}>
+                        <div className="flex items-start gap-4 mb-4">
+                            <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-serif font-bold text-sm">
+                            {idx + 1}
+                            </span>
+                            <h3 className="font-medium text-lg text-slate-800 pt-0.5">{q.q}</h3>
+                        </div>
+
+                        <div className="pl-12 space-y-3">
+                            {q.options.map((opt, optIdx) => {
+                            let btnClass = "w-full text-left p-4 rounded-lg border text-sm transition-all duration-200 relative ";
+
+                            if (showResults) {
+                                if (optIdx === q.ansIndex) {
+                                btnClass += "bg-emerald-100 border-emerald-500 text-emerald-900 font-bold"; // Correct Answer
+                                } else if (userAnswers[q.id] === optIdx) {
+                                btnClass += "bg-rose-100 border-rose-400 text-rose-900"; // User's Wrong Answer
+                                } else {
+                                btnClass += "bg-slate-50 border-slate-200 text-slate-400 opacity-60"; // Other Options
+                                }
+                            } else {
+                                if (userAnswers[q.id] === optIdx) {
+                                btnClass += "bg-slate-800 border-slate-800 text-white shadow-md transform scale-[1.01]"; // Selected
+                                } else {
+                                btnClass += "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300"; // Default
+                                }
+                            }
+
+                            return (
+                                <button
+                                key={optIdx}
+                                onClick={() => handleOptionSelect(q.id, optIdx)}
+                                disabled={showResults}
+                                className={btnClass}
+                                >
+                                {opt}
+                                {showResults && optIdx === q.ansIndex && (
+                                    <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600" />
+                                )}
+                                </button>
+                            );
+                            })}
+                        </div>
+
+                        {/* Explanation Area */}
+                        {showResults && (
+                            <div className="mt-6 ml-12 p-4 bg-slate-50 rounded-lg border border-slate-200 text-sm animate-fade-in">
+                            <span className="block font-bold text-slate-700 mb-1">解説:</span>
+                            <p className="text-slate-600 leading-relaxed">{q.exp}</p>
+                            </div>
+                        )}
+                        </div>
+                    );
+                    })}
+                </div>
+
+                {/* Grade Button */}
+                {!showResults && (
+                    <div className="sticky bottom-6 flex justify-center pt-8">
+                    <button
+                        onClick={calculateScore}
+                        disabled={answeredCount < 10}
+                        className={`
+                        px-12 py-4 rounded-full font-bold text-lg shadow-xl transition-all duration-300
+                        ${answeredCount === 10
+                            ? 'bg-slate-900 text-amber-400 hover:bg-slate-800 hover:scale-105 cursor-pointer'
+                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'}
+                        `}
+                    >
+                        {answeredCount === 10 ? "採点する" : `あと ${10 - answeredCount} 問`}
+                    </button>
+                    </div>
+                )}
+                </div>
+            );
+        };
+
+        // 3. Main App Layout
+        const App = () => {
+            const [view, setView] = useState('home'); // 'home', 'faq', 'quiz'
+
+            // Common Header
+            const Header = () => (
+                <header className="bg-slate-900 text-white sticky top-0 z-50 shadow-lg border-b border-amber-500/30">
+                <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('home')}>
+                    <div className="bg-amber-500 p-1.5 rounded text-slate-900">
+                        <Award size={20} />
+                    </div>
+                    <h1 className="font-serif font-bold text-lg tracking-wider">
+                        Nikkei 225 <span className="text-amber-400 font-light">Options Academy</span>
+                    </h1>
+                    </div>
+                    <nav className="flex gap-1 md:gap-4 text-sm font-medium">
+                    <button
+                        onClick={() => setView('faq')}
+                        className={`px-3 py-1.5 rounded-md transition-colors ${view === 'faq' ? 'text-amber-400 bg-white/10' : 'text-slate-300 hover:text-white'}`}
+                    >
+                        FQA・学習
+                    </button>
+                    <button
+                        onClick={() => setView('quiz')}
+                        className={`px-3 py-1.5 rounded-md transition-colors ${view === 'quiz' ? 'text-amber-400 bg-white/10' : 'text-slate-300 hover:text-white'}`}
+                    >
+                        e-Learning
+                    </button>
+                    </nav>
+                </div>
+                </header>
+            );
+
+            return (
+                <div className="min-h-screen bg-slate-100 font-sans text-slate-800 selection:bg-amber-200 selection:text-amber-900">
+                <Header />
+
+                <main className="max-w-4xl mx-auto px-6 py-10">
+                    {view === 'home' && (
+                    <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+                        <h2 className="text-3xl md:text-5xl font-serif font-bold text-slate-800 text-center leading-tight mb-6">
+                        オプション取引の<br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-amber-400">プロフェッショナル</span>へ
+                        </h2>
+                        <p className="text-slate-500 text-center max-w-xl mb-12 leading-relaxed">
+                        日経225オプション取引の基礎から高度な戦略まで。<br />
+                        社内e-Learningシステムで、確実な知識を身につけましょう。
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
+                        <button
+                            onClick={() => setView('faq')}
+                            className="group relative overflow-hidden bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-200 hover:border-amber-300 text-left"
+                        >
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                            <BookOpen className="w-8 h-8 text-amber-500 mb-4 relative z-10" />
+                            <h3 className="text-xl font-bold text-slate-800 mb-2 relative z-10">FQAで学習する</h3>
+                            <p className="text-sm text-slate-500 relative z-10">50のFAQを通じて、用語や仕組みをレベル別に習得します。</p>
+                            <div className="mt-6 flex items-center text-amber-600 font-bold text-sm relative z-10 group-hover:translate-x-2 transition-transform">
+                            Start Learning <ArrowRight className="w-4 h-4 ml-1" />
+                            </div>
+                        </button>
+
+                        <button
+                            onClick={() => setView('quiz')}
+                            className="group relative overflow-hidden bg-slate-800 p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-700 text-left"
+                        >
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-slate-700 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                            <GraduationCap className="w-8 h-8 text-amber-400 mb-4 relative z-10" />
+                            <h3 className="text-xl font-bold text-white mb-2 relative z-10">e-Learningでテスト</h3>
+                            <p className="text-sm text-slate-400 relative z-10">ランダムに選ばれた10問で理解度を確認。実践的な知識を試します。</p>
+                            <div className="mt-6 flex items-center text-amber-400 font-bold text-sm relative z-10 group-hover:translate-x-2 transition-transform">
+                            Start Test <ArrowRight className="w-4 h-4 ml-1" />
+                            </div>
+                        </button>
+                        </div>
+                    </div>
+                    )}
+
+                    {view === 'faq' && <FAQSection />}
+                    {view === 'quiz' && <QuizSection />}
+                </main>
+
+                {/* Footer */}
+                <footer className="bg-white border-t border-slate-200 mt-auto py-8 text-center text-slate-400 text-sm">
+                    <p>&copy; 2024 Corporate e-Learning System. All rights reserved.</p>
+                </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
