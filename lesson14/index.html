@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>水防活動サポート＆避難判断アプリ</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel (ブラウザ上でJSXをコンパイルするため) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- FontAwesome (アイコン用) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // --- アイコンヘルパーコンポーネント ---
+    const Icon = ({ name, size, className = '' }) => (
+      <i className={`${name} ${className}`} style={{ fontSize: size ? `${size}px` : 'inherit' }}></i>
+    );
+
+    // --- データ定義 ---
+    const INCIDENT_TYPES = [
+      { id: 'leakage', title: '漏水 (水がしみ出ている)', icon: 'fa-solid fa-droplet', color: 'bg-blue-100 text-blue-600 border-blue-300' },
+      { id: 'crack', title: '亀裂・崩壊 (斜面の崩れ)', icon: 'fa-solid fa-heart-pulse', color: 'bg-orange-100 text-orange-600 border-orange-300' },
+      { id: 'overflow', title: '越水・溢水 (水があふれそう)', icon: 'fa-solid fa-water', color: 'bg-cyan-100 text-cyan-600 border-cyan-300' },
+      { id: 'scour', title: '洗掘 (深掘れ・削られている)', icon: 'fa-solid fa-shield-halved', color: 'bg-purple-100 text-purple-600 border-purple-300' },
+    ];
+
+    const QUESTIONS = {
+      leakage: [
+        {
+          id: 'q1',
+          text: 'しみ出ている水の状態は？',
+          options: [
+            { label: '水は澄んでいる', level: 'warning', action: '月の輪工・釜段工で対応し、監視継続。', message: '堤防から澄んだ漏水が発生しています。現在水防工法にて対応・監視中です。' },
+            { label: '濁った水（泥水）が出ている', level: 'danger', action: '【危険】堤防内部の土砂が流出しています。直ちに作業を中止し、避難してください！', message: '堤防から濁った漏水（泥水）を確認！堤防崩壊の危険性が極めて高いため、水防団は撤退し、直ちに周辺住民の避難指示をお願いします！' },
+          ]
+        },
+        {
+          id: 'q2',
+          text: '漏水の発生場所は？',
+          options: [
+            { label: '平坦地（水田など）', level: 'info', action: '釜段工 または 月の輪工 を実施。', message: '平坦地にて漏水を確認。' },
+            { label: '斜面（堤防法面）', level: 'warning', action: '亀裂がないか確認し、監視を強化してください。', message: '堤防斜面にて漏水を確認。' }
+          ]
+        }
+      ],
+      crack: [
+        {
+          id: 'q1',
+          text: '亀裂・崩落の発生場所と規模は？',
+          options: [
+            { label: '川表(川側)の小規模な崩れ', level: 'warning', action: '木流し工、シート張り工などで対応。', message: '川側斜面に小規模な崩れ・亀裂を確認。水防工法で対応中です。' },
+            { label: '堤防天端(上部)や居住地側の亀裂', level: 'danger', action: '【危険】堤防全体が崩壊する前兆です。直ちに退避し、住民避難を要請してください。', message: '堤防天端（または居住地側）に亀裂を確認！堤防崩壊の危険が切迫しているため、直ちに周辺住民の避難指示をお願いします！' },
+            { label: '広範囲にわたる亀裂', level: 'danger', action: '【危険】直ちに退避してください。', message: '堤防に広範囲の亀裂を確認。崩壊の危険が高いため撤退・避難を要請します。' }
+          ]
+        }
+      ],
+      overflow: [
+        {
+          id: 'q1',
+          text: '現在の水位と堤防天端との差は？',
+          options: [
+            { label: 'まだ余裕があるが、上昇中', level: 'warning', action: '人員に余裕があれば、積み土のう工を準備。', message: '水位が上昇中。越水に備え積み土のう工の準備に入ります。' },
+            { label: '天端まで数cm〜既に越水している', level: 'danger', action: '【危険】積み土のうで対応しきれない場合は直ちに避難してください。', message: '越水が開始（または切迫）しています！氾濫の危険があるため、下流域・周辺住民の緊急避難をお願いします！' }
+          ]
+        }
+      ],
+      scour: [
+        {
+          id: 'q1',
+          text: '川の流速と削られ具合は？',
+          options: [
+            { label: '流速は比較的遅い（ジョギング程度:約2m/s未満）', level: 'info', action: 'シート張り工を実施。※めくれ上がりに注意', message: '洗掘箇所を確認。シート張り工にて対応を実施します。' },
+            { label: '流速が速く、大きく削られている', level: 'warning', action: 'シート張り工は困難。木流し工などの対応、または本部へ指示を仰ぐ。', message: '激しい洗掘を確認。流速が速く現場での工法実施が困難なため、対応を協議・要請します。' }
+          ]
+        }
+      ]
+    };
+
+    // --- メインコンポーネント ---
+    function App() {
+      const [currentScreen, setCurrentScreen] = useState('home'); // home, assess, report, manual
+      const [selectedType, setSelectedType] = useState(null);
+      const [answers, setAnswers] = useState({});
+      const [reportData, setReportData] = useState(null);
+      const [copied, setCopied] = useState(false);
+
+      // 画面遷移ハンドラー
+      const goHome = () => {
+        setCurrentScreen('home');
+        setSelectedType(null);
+        setAnswers({});
+        setReportData(null);
+        setCopied(false);
+      };
+
+      const startAssessment = (typeId) => {
+        setSelectedType(typeId);
+        setAnswers({});
+        setCurrentScreen('assess');
+      };
+
+      const handleAnswer = (questionId, option) => {
+        const newAnswers = { ...answers, [questionId]: option };
+        setAnswers(newAnswers);
+
+        // 全ての質問に答えたかチェック
+        const currentQuestions = QUESTIONS[selectedType];
+        if (Object.keys(newAnswers).length === currentQuestions.length) {
+          generateFinalReport(newAnswers, currentQuestions);
+        }
+      };
+
+      const generateFinalReport = (finalAnswers, questions) => {
+        // 危険度判定ロジック
+        let highestLevel = 'info';
+        if (Object.values(finalAnswers).some(a => a.level === 'danger')) highestLevel = 'danger';
+        else if (Object.values(finalAnswers).some(a => a.level === 'warning')) highestLevel = 'warning';
+
+        // 報告文の合成
+        const messageParts = Object.values(finalAnswers).map(a => a.message);
+        const actions = Object.values(finalAnswers).map(a => a.action);
+
+        const typeDef = INCIDENT_TYPES.find(t => t.id === selectedType);
+
+        const report = {
+          level: highestLevel,
+          typeTitle: typeDef.title,
+          actions: [...new Set(actions)], // 重複削除
+          rawMessage: messageParts.join(' '),
+          timestamp: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setReportData(report);
+        setCurrentScreen('report');
+      };
+
+      const copyToClipboard = () => {
+        const textToCopy = `【水防本部/関係機関 宛】\n発生時刻: ${reportData.timestamp}\n場所: [※ここに河川名・地区名を入力]\n\n状況: ${reportData.typeTitle}\n報告内容: ${reportData.rawMessage}\n\n送信者: [※分団名・氏名を入力]`;
+        
+        // クリップボードAPIの代替
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          setCopied(true);
+          setTimeout(() => setCopied(false), 3000);
+        } catch (err) {
+          console.error('Unable to copy', err);
+        }
+        document.body.removeChild(textArea);
+      };
+
+      // --- UIレンダリング ---
+      const renderHome = () => (
+        <div className="p-4 space-y-6 max-w-md mx-auto">
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-bold text-gray-800">水防現場判断サポート</h1>
+            <p className="text-gray-600 text-sm">現場の異常を選択し、危険度と報告内容を確認してください。</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 mt-6">
+            {INCIDENT_TYPES.map((type) => (
+              <button
+                key={type.id}
+                onClick={() => startAssessment(type.id)}
+                className={`flex items-center p-4 border-2 rounded-xl transition-all active:scale-95 ${type.color} bg-opacity-30`}
+              >
+                <div className="p-3 rounded-full bg-white bg-opacity-60 mr-4 w-12 h-12 flex items-center justify-center">
+                  <Icon name={type.icon} size={24} />
+                </div>
+                <div className="text-left font-bold text-lg">
+                  {type.title}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-8 pt-4 border-t border-gray-200">
+            <button 
+              onClick={() => setCurrentScreen('manual')}
+              className="w-full flex items-center justify-center p-4 bg-gray-100 text-gray-700 rounded-xl font-bold"
+            >
+              <Icon name="fa-solid fa-circle-info" className="mr-2" size={20} />
+              水防工法 簡易マニュアルを見る
+            </button>
+          </div>
+        </div>
+      );
+
+      const renderAssessment = () => {
+        const questions = QUESTIONS[selectedType];
+        const currentQIndex = Object.keys(answers).length;
+        
+        if (currentQIndex >= questions.length) return null;
+
+        const currentQ = questions[currentQIndex];
+        const typeDef = INCIDENT_TYPES.find(t => t.id === selectedType);
+
+        return (
+          <div className="p-4 space-y-6 max-w-md mx-auto">
+            <div className="flex items-center space-x-3 mb-6">
+              <button onClick={goHome} className="p-2 w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full text-gray-600">
+                <Icon name="fa-solid fa-arrow-left" size={18} />
+              </button>
+              <div className="flex items-center text-gray-700 font-bold">
+                <Icon name={typeDef.icon} size={18} className="mr-2" />
+                {typeDef.title} の状況確認 ({currentQIndex + 1}/{questions.length})
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+              <h2 className="text-xl font-bold text-gray-800 mb-6">{currentQ.text}</h2>
+              
+              <div className="space-y-4">
+                {currentQ.options.map((option, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleAnswer(currentQ.id, option)}
+                    className={`w-full text-left p-4 rounded-xl border-2 transition-all active:scale-95
+                      ${option.level === 'danger' ? 'border-red-500 bg-red-50 text-red-800 hover:bg-red-100' : 
+                        option.level === 'warning' ? 'border-yellow-500 bg-yellow-50 text-yellow-800 hover:bg-yellow-100' : 
+                        'border-blue-500 bg-blue-50 text-blue-800 hover:bg-blue-100'}`}
+                  >
+                    <div className="font-bold text-lg">{option.label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const renderReport = () => {
+        if (!reportData) return null;
+
+        const isDanger = reportData.level === 'danger';
+        const isWarning = reportData.level === 'warning';
+
+        return (
+          <div className="p-4 space-y-6 max-w-md mx-auto pb-20">
+            <div className="flex items-center space-x-3 mb-2">
+              <button onClick={goHome} className="p-2 w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full text-gray-600">
+                <Icon name="fa-solid fa-house" size={18} />
+              </button>
+              <div className="text-gray-700 font-bold">判定結果・報告</div>
+            </div>
+
+            {/* 危険度バッジ */}
+            <div className={`p-6 rounded-2xl text-white ${isDanger ? 'bg-red-600 animate-pulse' : isWarning ? 'bg-yellow-600' : 'bg-blue-600'}`}>
+              <div className="flex items-center justify-center space-x-2 mb-2">
+                <Icon name="fa-solid fa-triangle-exclamation" size={32} />
+                <h2 className="text-2xl font-bold">
+                  {isDanger ? '直ちに避難・通報！' : isWarning ? '警戒強化・注意' : '水防活動実施'}
+                </h2>
+              </div>
+              <p className="text-center font-medium opacity-90">
+                {isDanger ? '堤防決壊の危険性が極めて高い状態です。' : '状況の変化に十分注意して活動してください。'}
+              </p>
+            </div>
+
+            {/* 推奨される対応 */}
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-3">
+              <h3 className="font-bold text-gray-800 flex items-center border-b pb-2">
+                <Icon name="fa-solid fa-shield-halved" size={18} className="mr-2 text-gray-600" />
+                現場での推奨対応
+              </h3>
+              <ul className="space-y-2">
+                {reportData.actions.map((action, idx) => (
+                  <li key={idx} className="flex items-start text-gray-700 font-medium">
+                    <span className="text-blue-500 mr-2">■</span>
+                    {action}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 報告用テキスト */}
+            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-200 space-y-3">
+              <div className="flex justify-between items-center border-b border-gray-300 pb-2">
+                <h3 className="font-bold text-gray-800 flex items-center">
+                  <Icon name="fa-solid fa-phone" size={18} className="mr-2 text-gray-600" />
+                  本部・警察・消防 連絡用文面
+                </h3>
+                <button 
+                  onClick={copyToClipboard}
+                  className="flex items-center text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  {copied ? <Icon name="fa-solid fa-circle-check" size={16} className="mr-1" /> : <Icon name="fa-solid fa-copy" size={16} className="mr-1" />}
+                  {copied ? 'コピー完了' : 'コピー'}
+                </button>
+              </div>
+              <div className="bg-white p-3 rounded border border-gray-200 text-sm text-gray-700 font-mono whitespace-pre-wrap leading-relaxed">
+{`【水防本部/関係機関 宛】
+発生時刻: ${reportData.timestamp}
+場所: [※ここに河川名・地区名を入力]
+
+状況: ${reportData.typeTitle}
+報告内容: ${reportData.rawMessage}
+
+送信者: [※分団名・氏名を入力]`}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                ※上記テキストをコピーし、LINEやメールで本部に送信、または電話で読み上げてください。
+              </p>
+            </div>
+          </div>
+        );
+      };
+
+      const renderManual = () => (
+        <div className="p-4 space-y-6 max-w-md mx-auto">
+          <div className="flex items-center space-x-3 mb-6 border-b pb-4">
+            <button onClick={goHome} className="p-2 w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full text-gray-600">
+              <Icon name="fa-solid fa-arrow-left" size={18} />
+            </button>
+            <h2 className="text-xl font-bold text-gray-800">水防工法 簡易マニュアル</h2>
+          </div>
+
+          <div className="space-y-4">
+            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+              <h3 className="font-bold text-blue-700 flex items-center mb-2">
+                <Icon name="fa-solid fa-droplet" size={18} className="mr-2" /> 釜段工・月の輪工
+              </h3>
+              <p className="text-sm text-gray-600 mb-2"><strong>目的：</strong> 平坦地での漏水による土砂流出を防ぐ。</p>
+              <p className="text-sm text-gray-600">漏水口を土のうで囲み、内部に水を溜めて水圧をかけ、土砂の噴出を抑えます。水が澄んでくれば効果あり。</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+              <h3 className="font-bold text-cyan-700 flex items-center mb-2">
+                <Icon name="fa-solid fa-water" size={18} className="mr-2" /> 積み土のう工
+              </h3>
+              <p className="text-sm text-gray-600 mb-2"><strong>目的：</strong> 水のあふれ（越水）を防ぐ。</p>
+              <p className="text-sm text-gray-600">堤防の天端川側に土のうを積みます。作業性を重視する場合に適していますが、越水が始まった場合は非常に危険です。</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+              <h3 className="font-bold text-purple-700 flex items-center mb-2">
+                <Icon name="fa-solid fa-shield-halved" size={18} className="mr-2" /> シート張り工
+              </h3>
+              <p className="text-sm text-gray-600 mb-2"><strong>目的：</strong> 斜面の崩れ・洗掘を防ぐ。</p>
+              <p className="text-sm text-gray-600">迅速に対策可能ですが、流速がおよそ2m/s（ゆっくりとジョギングする速さ）を超えると、めくれ上がってしまうため注意が必要です。</p>
+            </div>
+          </div>
+        </div>
+      );
+
+      return (
+        <div className="min-h-screen bg-gray-50 font-sans">
+          {/* ヘッダー */}
+          <header className="bg-blue-900 text-white p-4 shadow-md sticky top-0 z-10">
+            <div className="max-w-md mx-auto flex items-center justify-between">
+              <div className="font-bold text-lg flex items-center">
+                <Icon name="fa-solid fa-shield-halved" className="mr-2" size={24} />
+                水防ナビ＆報告
+              </div>
+              {currentScreen !== 'home' && (
+                 <button onClick={goHome} className="text-sm flex items-center bg-blue-800 px-3 py-1 rounded-full hover:bg-blue-700 transition-colors">
+                   終了・戻る
+                 </button>
+              )}
+            </div>
+          </header>
+
+          {/* メインコンテンツ */}
+          <main className="pb-10">
+            {currentScreen === 'home' && renderHome()}
+            {currentScreen === 'assess' && renderAssessment()}
+            {currentScreen === 'report' && renderReport()}
+            {currentScreen === 'manual' && renderManual()}
+          </main>
+        </div>
+      );
+    }
+
+    // アプリのレンダリング
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
