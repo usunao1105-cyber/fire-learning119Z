@@ -155,7 +155,7 @@
     </div>
     <div class="card">
       <div class="lesson-title">Lesson 14</div>
-      <div class="lesson-desc">機関員教育</div>
+      <div class="lesson-desc">水防工法教育</div>
       <a href="lesson14/index.html" class="button">▶ 学習する</a>
     </div>
     <div class="card">
