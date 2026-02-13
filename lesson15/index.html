@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="大津市消防局の訓練事故検証報告書に基づく安全管理学習アプリ。クイズ形式で知識と教訓を学びます。">
+    <meta property="og:title" content="救助訓練安全管理ミッション：ZERO">
+    <meta property="og:description" content="過去の教訓を未来の安全へ。消防職員向け安全管理学習ミッション。">
+    <meta property="og:type" content="website">
+    
+    <title>救助訓練安全管理ミッション：ZERO</title>
+    
+    <!-- Tailwind CSS (Design) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome (Icons) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f3f4f6; /* bg-gray-100 */
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .correct-anim {
+            animation: bounce 0.5s;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        /* カスタムスクロールバー（解説文用） */
+        .prose::-webkit-scrollbar {
+            width: 8px;
+        }
+        .prose::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        .prose::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        .prose::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-800 text-white p-4 shadow-md sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-shield-alt text-yellow-400 text-2xl"></i>
+                <h1 class="text-lg md:text-xl font-bold tracking-wider">Mission: ZERO</h1>
+            </div>
+            <div class="text-sm font-light">
+                <span id="progress-text">Mission 0/20</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow container mx-auto p-4 max-w-3xl">
+        
+        <!-- Start Screen -->
+        <div id="start-screen" class="bg-white rounded-xl shadow-lg p-8 text-center animate-fade-in mt-10">
+            <div class="mb-6">
+                <div class="inline-block p-6 rounded-full bg-slate-100 mb-4">
+                    <i class="fas fa-user-shield text-6xl text-slate-700"></i>
+                </div>
+                <h2 class="text-2xl font-bold mb-2 text-slate-800">安全管理能力向上ミッション</h2>
+                <p class="text-gray-600 mb-6">過去の事故教訓を風化させず、<br>確実な知識を身につけることがあなたの任務です。</p>
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 text-left text-sm text-yellow-800 mb-8 rounded-md">
+                    <p class="font-bold mb-1"><i class="fas fa-exclamation-triangle mr-2"></i>Mission Objective</p>
+                    <p>大津市消防局の事故検証報告書に基づき、正しい安全管理手法と組織の教訓を習得せよ。</p>
+                </div>
+            </div>
+            <button onclick="startMission()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-lg shadow-lg transition transform hover:-translate-y-1">
+                ミッション開始
+            </button>
+        </div>
+
+        <!-- Quiz Screen (Hidden by default) -->
+        <div id="quiz-screen" class="hidden">
+            <!-- Progress Bar -->
+            <div class="w-full bg-gray-200 rounded-full h-2.5 mb-6">
+                <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+
+            <!-- Question Card -->
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden animate-fade-in">
+                <div class="bg-slate-50 p-4 border-b border-gray-100 flex justify-between items-center">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider" id="category-badge">CATEGORY</span>
+                    <span class="text-sm font-bold text-blue-600">Q.<span id="question-number">1</span></span>
+                </div>
+                
+                <div class="p-6 md:p-8">
+                    <h3 class="text-xl font-bold mb-6 leading-relaxed" id="question-text">
+                        ここに問題文が表示されます...
+                    </h3>
+
+                    <!-- Options -->
+                    <div class="space-y-3" id="options-container">
+                        <!-- Options will be injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Modal (Hidden by default) -->
+        <div id="feedback-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col animate-fade-in">
+                <div id="feedback-header" class="p-6 text-white text-center shrink-0 rounded-t-xl">
+                    <i id="feedback-icon" class="fas fa-check-circle text-5xl mb-2"></i>
+                    <h2 id="feedback-title" class="text-2xl font-bold">正解！</h2>
+                </div>
+                <div class="p-6 overflow-y-auto">
+                    <p class="text-gray-500 text-xs font-bold uppercase mb-2 tracking-wide">解説・根拠</p>
+                    <div class="prose prose-sm max-w-none text-gray-700 leading-relaxed mb-6 bg-gray-50 p-4 rounded-lg border border-gray-100" id="feedback-explanation">
+                        解説文がここに入ります。
+                    </div>
+                    <button onclick="nextQuestion()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-4 rounded-lg transition shadow-md">
+                        次へ進む
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Final Result Screen (Hidden by default) -->
+        <div id="final-screen" class="hidden bg-white rounded-xl shadow-lg p-8 text-center animate-fade-in mt-10">
+            <div class="mb-6">
+                <div class="inline-block p-4 rounded-full bg-blue-50 mb-4">
+                    <i class="fas fa-flag-checkered text-6xl text-blue-600"></i>
+                </div>
+                <h2 class="text-3xl font-bold mb-2 text-slate-800">ミッション完了</h2>
+                <p class="text-gray-600">お疲れ様でした。あなたの任務遂行結果は...</p>
+            </div>
+            
+            <div class="text-5xl font-bold text-slate-800 mb-2">
+                <span id="final-score">0</span><span class="text-2xl text-gray-400"> / 20</span>
+            </div>
+            <p id="final-rank" class="text-xl font-bold text-blue-600 mb-8">ランク判定中...</p>
+
+            <div class="bg-gray-50 p-6 rounded-lg text-left text-sm text-gray-600 mb-8 border border-gray-200">
+                <p class="mb-3 font-bold text-slate-700"><i class="fas fa-lightbulb text-yellow-500 mr-2"></i>重要チェックポイント:</p>
+                <ul class="list-disc pl-5 space-y-2">
+                    <li>「だろう」運転ではなく、物理的な確認（触手確認）を徹底する</li>
+                    <li>マニュアルと異なる手順を行う場合は、必ず事前にリスク評価を行う</li>
+                    <li>「二系統の原則」は、必ず「別々の強固な支点」から確保する</li>
+                    <li>安全管理員は訓練指導と兼任せず、監視に専念する</li>
+                </ul>
+            </div>
+
+            <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition transform hover:-translate-y-1">
+                もう一度挑戦する
+            </button>
+        </div>
+
+    </main>
+
+    <footer class="bg-slate-800 text-slate-400 py-8 text-center text-xs mt-8">
+        <div class="container mx-auto px-4">
+            <p class="mb-2">Based on: 大津市消防局訓練事故検証委員会報告書</p>
+            <p>Safety Management Training App &copy; 2026</p>
+        </div>
+    </footer>
+
+    <script>
+        // ---------------------------------------------------------
+        // ミッションデータ（問題集）
+        // 50問まで拡張する場合は、以下の配列にオブジェクトを追加してください。
+        // {
+        //     category: "カテゴリ名",
+        //     question: "問題文",
+        //     options: ["選択肢1", "選択肢2", "選択肢3", "選択肢4"],
+        //     correct: 0, // 正解のインデックス（0〜3）
+        //     explanation: "解説文"
+        // },
+        // ---------------------------------------------------------
+        const missionData = [
+            {
+                category: "事故の直接原因",
+                question: "今回の事故において、隊員が落下に至った直接的な原因として特定された事象はどれか？",
+                options: [
+                    "ロープそのものが切断した",
+                    "カラビナのゲートが破損し外れた",
+                    "支点に使用していたオープンスリングの結び目がほどけた",
+                    "降下器の操作を誤り、急降下した"
+                ],
+                correct: 2,
+                explanation: "事故の直接的な原因は、支点作成に使用していたオープンスリングの結索（本結び、またはそれに類する方法）が、荷重がかかった際の変形等によりほどけてしまった（崩壊した）ことにあります。"
+            },
+            {
+                category: "安全管理の原則",
+                question: "ロープレスキューにおける「二系統の原則」に関する記述として、今回の事故での反省点はどれか？",
+                options: [
+                    "メインロープとライフライン（ビレイ）を同じ支点から取っていたため、支点崩壊時に共倒れとなった",
+                    "ライフラインの強度がメインロープより弱かった",
+                    "メインロープを2本使用していたが、操作員が足りなかった",
+                    "ライフラインの設定自体を行っていなかった"
+                ],
+                correct: 0,
+                explanation: "「二系統の原則」は、一つが破断しても他方で安全を確保するためのものですが、今回はメインとビレイを『同一の支点』に設定していたため、支点の崩壊とともに両方の安全機能が失われました。"
+            },
+            {
+                category: "基本動作・確認",
+                question: "支点作成後の隊長の確認行動において、報告書で指摘された不十分な点はどれか？",
+                options: [
+                    "隊長は現場におらず、無線のみで報告を受けた",
+                    "目視確認はしたが、手で触れるなどの物理的な確認や、結び目の詳細な整合性の確認を行わなかった",
+                    "隊員への指示の声が小さく伝わっていなかった",
+                    "確認項目リストの読み上げを行わなかった"
+                ],
+                correct: 1,
+                explanation: "隊長は目視確認を行っていましたが、「普段どおりの結索で強度は十分だろう」という思い込みがあり、実際に手で触ったり、結び目の構造を詳細に確認するなどの具体的な安全確認が不足していました。"
+            },
+            {
+                category: "資機材の特性",
+                question: "オープンスリング（テープスリング）を結んで使用する際のリスクについて、正しい認識はどれか？",
+                options: [
+                    "結び目を作っても強度は全く低下しない",
+                    "摩擦係数が低く滑りやすいため、結び目が移動したりほどけたりするリスクが高い",
+                    "どのような結び方でも、一度締めれば絶対にほどけない",
+                    "本結び（スクエアノット）で使用することが推奨されている"
+                ],
+                correct: 1,
+                explanation: "近年の繊維素材（ダイニーマやナイロン等）を用いたスリングは表面が滑らかで摩擦が少なく、結び目が滑ったり、荷重の変化でほどけたりするリスクがあります。原則として結び目を作らずに使用するか、適切な結索法を選択する必要があります。"
+            },
+            {
+                category: "組織風土・背景",
+                question: "報告書において指摘された「組織風土」に関する問題点はどれか？",
+                options: [
+                    "訓練回数が多すぎて職員が疲弊していた",
+                    "マニュアルに記載のない手順でも、経験則で「よし」としてしまう文化があった",
+                    "新しい資機材の導入に積極的すぎた",
+                    "若手職員の意見が強すぎた"
+                ],
+                correct: 1,
+                explanation: "技術要領に記載のない結索方法が常態化していたことや、それを是正する機会がなかったことなど、マニュアル遵守の意識が希薄で、経験則に依存する組織風土が背後要因として指摘されています。"
+            },
+            {
+                category: "再発防止策",
+                question: "再発防止策として新たに策定・運用されたマニュアルの名称はどれか？",
+                options: [
+                    "大津市消防局警防活動規定",
+                    "救助技術高度化ガイドライン",
+                    "訓練時における安全管理マニュアル",
+                    "労働災害防止計画書"
+                ],
+                correct: 2,
+                explanation: "事故を受け、大津市消防局独自の「訓練時における安全管理マニュアル」が策定され、2025年（令和7年）4月から運用が開始されました。"
+            },
+            {
+                category: "訓練環境",
+                question: "事故発生時の中消防署の訓練環境について、指摘された課題はどれか？",
+                options: [
+                    "訓練専用の施設がなく、庁舎の一部を流用して訓練していた",
+                    "訓練施設は最新鋭だったが使用方法が難しかった",
+                    "屋外訓練場が広すぎた",
+                    "訓練時間は十分確保されていた"
+                ],
+                correct: 0,
+                explanation: "事故当時の中消防署には訓練専用の施設がなく、庁舎の構造物（手すり等）を利用して訓練を行っていました。現在は新築移転により訓練施設が整備されています。"
+            },
+            {
+                category: "安全管理体制",
+                question: "訓練時の「安全管理員」の配置について、改善後の対応として正しいものはどれか？",
+                options: [
+                    "人員不足のため、訓練指導者が兼任する",
+                    "形式的に配置すればよい",
+                    "訓練の全体を俯瞰し、活動には従事しない専任の安全管理員を配置する",
+                    "若手職員の教育係が兼任する"
+                ],
+                correct: 2,
+                explanation: "安全管理員が訓練指導や実施を兼任するとチェック機能が働かなくなるため、活動には従事せず、客観的に安全監視を行う専任の安全管理員を配置することが重要です。"
+            },
+            {
+                category: "ヒューマンエラー",
+                question: "人は誰でもミスをするという前提に立ち、ミスが事故につながらないようにする考え方を何というか？",
+                options: [
+                    "精神論",
+                    "フェイルセーフ",
+                    "根性論",
+                    "成果主義"
+                ],
+                correct: 1,
+                explanation: "人間はエラーを起こす生き物であるという前提に立ち、エラーが起きても安全側（Safe）に失敗（Fail）するようにシステムや手順を構築する「フェイルセーフ」の考え方が重要です。"
+            },
+            {
+                category: "資機材管理",
+                question: "安全管理資器材の整備に関する再発防止策として記述に含まれていた内容は？",
+                options: [
+                    "予算削減のため既存のものを修理して使う",
+                    "安全マットの増強やヘルメットの規格見直しを行う",
+                    "個人装備は個人の責任で購入する",
+                    "資器材の点検は年1回に減らす"
+                ],
+                correct: 1,
+                explanation: "事故時、安全マットが不足していたことや、ヘルメットが古かったことなどが指摘されました。これを受け、安全マットの配備や、衝撃吸収性能の高いヘルメットへの更新などの環境整備が進められています。"
+            },
+            {
+                category: "訓練計画",
+                question: "訓練を実施する際、事前に作成・提出が求められるようになったものは？",
+                options: [
+                    "訓練予算書",
+                    "訓練参加者名簿のみ",
+                    "リスク評価を含む詳細な訓練計画書",
+                    "訓練終了報告書"
+                ],
+                correct: 2,
+                explanation: "訓練の内容に応じ、事前に潜在的な危険要因を洗い出し、リスク評価を行った上で対策を講じるため、「訓練計画書」の作成と決裁が徹底されるようになりました。"
+            },
+            {
+                category: "基本技術",
+                question: "「三つ打ちロープ」と「カーンマントルロープ（編みロープ）」の取扱いの混同について、正しい対策は？",
+                options: [
+                    "どちらも同じ結び方で使用してよい",
+                    "ロープの特性が異なるため、それぞれの特性に適した結索・取扱要領を明確に区別し習熟する",
+                    "すべて三つ打ちロープに戻す",
+                    "強度は変わらないので気にしなくてよい"
+                ],
+                correct: 1,
+                explanation: "従来からの三つ打ちロープの技術と、都市型救助等で用いるカーンマントルロープの技術が混在・混同されていたことが背景にあります。それぞれの資器材の特性を理解し、正しい使用法を徹底する必要があります。"
+            },
+            {
+                category: "現場活動",
+                question: "隊員間で安全確認を行う際、「指差呼称」に加え重要とされる行動は？",
+                options: [
+                    "大声を出すことだけを重視する",
+                    "相互確認（ダブルチェック）と、物理的な確認（触って確認）",
+                    "隊長の顔色をうかがう",
+                    "急いで次の動作に移る"
+                ],
+                correct: 1,
+                explanation: "一人だけの確認ではエラーを見逃す可能性があります。複数の隊員によるダブルチェック（相互確認）や、目で見るだけでなく手で触れて確認する物理的確認が事故防止に有効です。"
+            },
+            {
+                category: "心理的要因",
+                question: "訓練中に「ヒヤリ・ハット」が発生した場合の適切な対応は？",
+                options: [
+                    "訓練が中断するので黙っておく",
+                    "その場で訓練を一時停止し、全員で事象を共有・改善してから再開する",
+                    "訓練終了後に個人的に反省する",
+                    "笑って済ませる"
+                ],
+                correct: 1,
+                explanation: "小さな予兆（ヒヤリ・ハット）を見逃すと重大事故につながります。発生時は躊躇なく訓練を止め（ストップ・コール）、原因を究明・共有することが安全文化の醸成につながります。"
+            },
+            {
+                category: "安全係数",
+                question: "救助ロープ等のシステムにおいて、一般的に推奨される安全率（静荷重に対する破断強度の倍率）は？",
+                options: [
+                    "1.5倍",
+                    "ギリギリ耐えられれば良い",
+                    "10倍以上（システム全体として十分な余裕を持つ）",
+                    "2倍"
+                ],
+                correct: 2,
+                explanation: "救助活動においては、想定外の荷重や衝撃荷重がかかる可能性があります。一般的にロープレスキューのシステムでは、運用荷重に対して10:1以上の安全率（Safety Factor）を確保することが推奨されます。"
+            },
+            {
+                category: "事故の教訓",
+                question: "今回の事故の教訓として、「ベテラン隊員」に求められる態度は？",
+                options: [
+                    "自分の経験だけを信じて指導する",
+                    "初心に返り、基本手順やマニュアルの根拠を再確認し、若手に正しい手本を示す",
+                    "難しい技術を披露する",
+                    "安全管理は若手の仕事とする"
+                ],
+                correct: 1,
+                explanation: "経験豊富な隊員であっても、慣れによる省略や思い込みが発生します。ベテランこそ基本に忠実であり、マニュアルの遵守と安全確認の徹底を率先垂範することが求められます。"
+            },
+            {
+                category: "結索技術",
+                question: "「本結び（Square Knot）」の特徴として、救助活動の主要な支点作成に適さない理由は？",
+                options: [
+                    "結ぶのが難しいため",
+                    "強度が低く、特に末端処理がない場合や動荷重がかかるとほどけやすいため",
+                    "ほどくのが難しすぎるため",
+                    "見た目が美しくないため"
+                ],
+                correct: 1,
+                explanation: "本結びは、荷造り等には便利ですが、命を預ける支点としては信頼性が低く、特に衝撃や揺れでほどける危険性があるため、適切なバックアップや末端処理なしに主要な支点に用いるべきではありません。"
+            },
+            {
+                category: "コミュニケーション",
+                question: "訓練中の安全に関わる指摘をしやすくするための雰囲気作りを何というか？",
+                options: [
+                    "サイコロジカル・セーフティ（心理的安全性）の確保",
+                    "トップダウン方式",
+                    "成果主義の導入",
+                    "厳罰化"
+                ],
+                correct: 0,
+                explanation: "階級や経験年数に関わらず、危険を感じた時に誰でも自由に発言できる「心理的安全性」が担保されている組織では、事故の予兆を早期に発見しやすくなります。"
+            },
+            {
+                category: "検証委員会",
+                question: "事故後に設置された検証委員会が求めたことは？",
+                options: [
+                    "個人の責任追及",
+                    "事故原因の科学的な究明と、組織的な背景要因を含めた再発防止策の提言",
+                    "訓練の全面的禁止",
+                    "活動の縮小"
+                ],
+                correct: 1,
+                explanation: "検証委員会は、誰かを責めること（個人の責任追及）ではなく、なぜ事故が起きたのかという「原因究明」と、二度と同じ事故を起こさないための「再発防止策」の構築を目的としています。"
+            },
+            {
+                category: "総括",
+                question: "私たちがこの事故から学ぶべき最も重要な姿勢は？",
+                options: [
+                    "危険な訓練は一切しないこと",
+                    "事故は他人事として処理すること",
+                    "尊い犠牲を無駄にせず、一人ひとりが安全の主体者として考え、行動を変えていくこと",
+                    "新しい資機材さえあれば安全だと思うこと"
+                ],
+                correct: 2,
+                explanation: "安全は誰かが与えてくれるものではなく、一人ひとりの意識と行動によって作られます。事故の教訓を自分のこととして捉え、日々の活動に活かしていくことが最大の供養であり責務です。"
+            }
+        ];
+
+        // ---------------------------------------------------------
+        // アプリケーションロジック
+        // ---------------------------------------------------------
+        
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let shuffledMissionData = [];
+
+        // 配列をシャッフルする関数
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // ミッション開始
+        function startMission() {
+            // データをシャッフルしてセット
+            shuffledMissionData = shuffleArray([...missionData]);
+            
+            // 状態初期化
+            currentQuestionIndex = 0;
+            score = 0;
+            
+            // UI切り替え
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            document.getElementById('final-screen').classList.add('hidden');
+            
+            loadQuestion();
+        }
+
+        // 問題読み込み
+        function loadQuestion() {
+            const currentData = shuffledMissionData[currentQuestionIndex];
+            
+            // 進捗バー更新
+            const progress = ((currentQuestionIndex) / shuffledMissionData.length) * 100;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+            document.getElementById('progress-text').innerText = `Mission ${currentQuestionIndex + 1}/${shuffledMissionData.length}`;
+            
+            // 問題表示
+            document.getElementById('category-badge').innerText = currentData.category;
+            document.getElementById('question-number').innerText = currentQuestionIndex + 1;
+            document.getElementById('question-text').innerText = currentData.question;
+            
+            // 選択肢生成
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+            
+            currentData.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = "w-full text-left p-4 rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition duration-200 flex items-center group";
+                button.onclick = () => checkAnswer(index);
+                
+                button.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center mr-4 group-hover:bg-blue-500 group-hover:text-white transition font-bold text-sm shrink-0">
+                        ${index + 1}
+                    </div>
+                    <span class="text-gray-700 font-medium">${option}</span>
+                `;
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        // 答え合わせ
+        function checkAnswer(selectedIndex) {
+            const currentData = shuffledMissionData[currentQuestionIndex];
+            const isCorrect = selectedIndex === currentData.correct;
+            
+            // モーダル内容設定
+            const header = document.getElementById('feedback-header');
+            const icon = document.getElementById('feedback-icon');
+            const title = document.getElementById('feedback-title');
+            
+            if (isCorrect) {
+                score++;
+                header.className = "p-6 bg-green-500 text-white text-center shrink-0 rounded-t-xl";
+                icon.className = "fas fa-check-circle text-5xl mb-2 correct-anim";
+                title.innerText = "MISSION CLEAR! (正解)";
+            } else {
+                header.className = "p-6 bg-red-500 text-white text-center shrink-0 rounded-t-xl";
+                icon.className = "fas fa-times-circle text-5xl mb-2";
+                title.innerText = "MISSION FAILED... (不正解)";
+            }
+            
+            document.getElementById('feedback-explanation').innerText = currentData.explanation;
+            
+            // モーダル表示
+            document.getElementById('feedback-modal').classList.remove('hidden');
+        }
+
+        // 次の問題へ
+        function nextQuestion() {
+            document.getElementById('feedback-modal').classList.add('hidden');
+            currentQuestionIndex++;
+            
+            if (currentQuestionIndex < shuffledMissionData.length) {
+                loadQuestion();
+            } else {
+                showFinalResult();
+            }
+        }
+
+        // 最終結果表示
+        function showFinalResult() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('final-screen').classList.remove('hidden');
+            
+            document.getElementById('final-score').innerText = score;
+            
+            // ランク判定
+            const rankElement = document.getElementById('final-rank');
+            const percentage = (score / shuffledMissionData.length) * 100;
+            
+            if (percentage === 100) {
+                rankElement.innerText = "ランク S：安全管理のエキスパート";
+                rankElement.className = "text-xl font-bold text-yellow-500 mb-8";
+            } else if (percentage >= 80) {
+                rankElement.innerText = "ランク A：優秀な安全意識";
+                rankElement.className = "text-xl font-bold text-blue-600 mb-8";
+            } else if (percentage >= 60) {
+                rankElement.innerText = "ランク B：さらなる向上を";
+                rankElement.className = "text-xl font-bold text-green-600 mb-8";
+            } else {
+                rankElement.innerText = "ランク C：基本から復習が必要";
+                rankElement.className = "text-xl font-bold text-red-600 mb-8";
+            }
+        }
+
+    </script>
+</body>
+</html>
